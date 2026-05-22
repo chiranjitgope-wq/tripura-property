@@ -1,9 +1,18 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
-import { properties as staticProperties, type Property, type PropertyType } from "@/lib/properties";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
+import {
+  properties as staticProperties,
+  type Property,
+  type PropertyType,
+} from "@/lib/properties";
 
 type ViewMode = "all" | "saved";
 type CategoryType = "house" | "flat" | "plot" | "rent";
@@ -39,8 +48,6 @@ type AdminSettings = {
   adminPassword: string;
   sliderBanners: BannerSlide[];
 };
-
-type FavoriteState = string[];
 
 function HouseIcon({ className = "" }: { className?: string }) {
   return (
@@ -177,6 +184,10 @@ function WhatsAppIcon({ className = "" }: { className?: string }) {
   );
 }
 
+const SETTINGS_KEY = "tripura-settings";
+const PROPERTIES_KEY = "tripura-properties";
+const FAVORITES_KEY = "tripura-favorites";
+
 const defaultSettings: AdminSettings = {
   siteName: "Tripura Property",
   whatsappNumber: "919999999999",
@@ -236,30 +247,23 @@ const defaultSettings: AdminSettings = {
   ],
 };
 
-const SETTINGS_KEY = "tripura-settings";
-const PROPERTIES_KEY = "tripura-properties";
-const FAVORITES_KEY = "tripura-favorites";
-const waFallback = "919862787368";
-
 function normalizeSettings(parsed: any): AdminSettings {
   const fallback = defaultSettings.sliderBanners;
-
-  const loadedBanners: BannerSlide[] = Array.from({ length: 5 }, (_, i) => {
-    const oldBanner = parsed?.sliderBanners?.[i];
-
-    return {
-      image: oldBanner?.image || fallback[i].image,
-      title: oldBanner?.title || fallback[i].title,
-      subtitle: oldBanner?.subtitle || fallback[i].subtitle,
-      link: oldBanner?.link || fallback[i].link,
-      category: (oldBanner?.category || fallback[i].category) as CategoryType,
-    };
-  });
+  const banners = Array.isArray(parsed?.sliderBanners) ? parsed.sliderBanners : [];
 
   return {
     ...defaultSettings,
     ...parsed,
-    sliderBanners: loadedBanners,
+    sliderBanners: Array.from({ length: 5 }, (_, i) => {
+      const b = banners[i];
+      return {
+        image: b?.image || fallback[i].image,
+        title: b?.title || fallback[i].title,
+        subtitle: b?.subtitle || fallback[i].subtitle,
+        link: b?.link || fallback[i].link,
+        category: (b?.category || fallback[i].category) as CategoryType,
+      };
+    }),
   };
 }
 
@@ -280,31 +284,30 @@ function isValidProperty(item: unknown): item is Property {
   );
 }
 
-function dedupeProperties(items: Property[]) {
+function dedupeBySlug(items: Property[]) {
   const map = new Map<string, Property>();
   for (const item of items) {
-    if (!map.has(item.slug)) map.set(item.slug, item);
+    if (!map.has(item.slug)) {
+      map.set(item.slug, item);
+    }
   }
   return Array.from(map.values());
 }
 
 export default function Home() {
-  const sliderRef = useRef<HTMLDivElement | null>(null);
   const featuredRef = useRef<HTMLDivElement | null>(null);
 
-  const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [settings, setSettings] = useState<AdminSettings>(defaultSettings);
   const [savedProperties, setSavedProperties] = useState<Property[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    const loadAll = () => {
+    const load = () => {
       try {
         const rawSettings = localStorage.getItem(SETTINGS_KEY);
-        if (rawSettings) {
-          setSettings(normalizeSettings(JSON.parse(rawSettings)));
-        }
+        if (rawSettings) setSettings(normalizeSettings(JSON.parse(rawSettings)));
       } catch (error) {
         console.error("Failed to load settings:", error);
       }
@@ -334,7 +337,7 @@ export default function Home() {
       }
     };
 
-    loadAll();
+    load();
 
     const onStorage = (event: StorageEvent) => {
       if (
@@ -343,7 +346,7 @@ export default function Home() {
         event.key === FAVORITES_KEY ||
         event.key === null
       ) {
-        loadAll();
+        load();
       }
     };
 
@@ -351,63 +354,47 @@ export default function Home() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const bannerSlides = useMemo(() => {
-    const slides = settings.sliderBanners?.length
-      ? settings.sliderBanners
-      : defaultSettings.sliderBanners;
+  const allProperties = useMemo(
+    () => dedupeBySlug([...savedProperties, ...staticProperties]),
+    [savedProperties]
+  );
 
-    return slides.map((slide, index) => ({
-      ...slide,
-      image: slide.image || defaultSettings.sliderBanners[index]?.image || "",
-    }));
-  }, [settings.sliderBanners]);
+  const featuredProperties = useMemo(() => {
+    return [...allProperties]
+      .sort(
+        (a, b) =>
+          Number(b.premium) - Number(a.premium) ||
+          Number(b.featured) - Number(a.featured)
+      )
+      .slice(0, 6);
+  }, [allProperties]);
+
+  const favoriteProperties = useMemo(
+    () => allProperties.filter((p) => favoriteIds.includes(p.id)),
+    [allProperties, favoriteIds]
+  );
+
+  const bannerSlides = useMemo(
+    () => settings.sliderBanners?.length ? settings.sliderBanners : defaultSettings.sliderBanners,
+    [settings.sliderBanners]
+  );
 
   useEffect(() => {
-    if (currentSlide >= bannerSlides.length) {
-      setCurrentSlide(0);
-    }
-  }, [bannerSlides.length, currentSlide]);
-
-  useEffect(() => {
+    if (!bannerSlides.length) return;
     const interval = window.setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
-    }, 3500);
-
+    }, 4000);
     return () => window.clearInterval(interval);
   }, [bannerSlides.length]);
 
-  const allProperties = useMemo(() => {
-    return dedupeProperties([...savedProperties, ...staticProperties]);
-  }, [savedProperties]);
-
-  const featuredProperties = allProperties.filter((p) => p.featured).slice(0, 6);
-  const favoriteProperties = allProperties.filter((p) => favoriteIds.includes(p.id));
-  const listToShow = viewMode === "saved" ? favoriteProperties : featuredProperties;
-
   const categories: Category[] = [
-    {
-      title: "House Sale",
-      icon: HouseIcon,
-      href: "/properties?type=house",
-    },
-    {
-      title: "Flat Sale",
-      icon: BuildingIcon,
-      href: "/properties?type=flat",
-    },
-    {
-      title: "Plot Sale",
-      icon: PinIcon,
-      href: "/properties?type=plot",
-    },
-    {
-      title: "Rent",
-      icon: KeyIcon,
-      href: "/properties?type=rent",
-    },
+    { title: "House Sale", icon: HouseIcon, href: "/properties?type=house" },
+    { title: "Flat Sale", icon: BuildingIcon, href: "/properties?type=flat" },
+    { title: "Plot Sale", icon: PinIcon, href: "/properties?type=plot" },
+    { title: "Rent", icon: KeyIcon, href: "/properties?type=rent" },
   ];
 
-  const waNumber = (settings.whatsappNumber || waFallback).replace(/[^\d]/g, "");
+  const waNumber = (settings.whatsappNumber || "919999999999").replace(/[^\d]/g, "");
 
   function toggleSaved(id: string) {
     setFavoriteIds((prev) => {
@@ -421,7 +408,10 @@ export default function Home() {
   }
 
   function openWhatsApp(message: string) {
-    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, "_blank");
+    window.open(
+      `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
   }
 
   async function shareProperty(property: Property) {
@@ -437,7 +427,7 @@ export default function Home() {
         });
         return;
       } catch {
-        // ignore and fall back
+        // fall back
       }
     }
 
@@ -449,18 +439,17 @@ export default function Home() {
   }
 
   const activeSlide = bannerSlides[currentSlide];
+  const listToShow = viewMode === "saved" ? favoriteProperties : featuredProperties;
 
   return (
     <main className="min-h-screen bg-[#f6f7fb] pb-28 text-slate-900">
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-3">
-            <Image
+            <img
               src="/logo.png"
               alt={settings.siteName}
-              width={40}
-              height={40}
-              className="rounded-full"
+              className="h-10 w-10 rounded-full object-cover"
             />
 
             <div>
@@ -470,10 +459,7 @@ export default function Home() {
                   {settings.siteName.split(" ").slice(1).join(" ") || "Property"}
                 </span>
               </h1>
-
-              <p className="text-xs text-slate-500">
-                Premium Property Listings
-              </p>
+              <p className="text-xs text-slate-500">Premium Property Listings</p>
             </div>
           </Link>
 
@@ -487,51 +473,73 @@ export default function Home() {
       </header>
 
       <section className="px-4 pt-4">
-        <div
-          ref={sliderRef}
-          className="mx-auto flex max-w-6xl snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth"
-        >
-          {bannerSlides.map((slide, index) => (
-            <article
-              key={`${slide.title}-${index}`}
-              className="relative min-w-full snap-start overflow-hidden rounded-[28px]"
-            >
-              <div
-                className="h-[220px] bg-cover bg-center sm:h-[360px]"
-                style={{
-                  backgroundImage: `url('${slide.image}')`,
-                }}
+        <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[28px] bg-black text-white shadow-2xl lg:grid-cols-2">
+          <div className="flex flex-col justify-center p-6 sm:p-10">
+            <p className="mb-3 inline-flex w-fit rounded-full bg-white/10 px-4 py-2 text-sm">
+              {settings.siteName}
+            </p>
+
+            <h2 className="text-3xl font-black leading-tight sm:text-5xl">
+              {activeSlide?.title || "Tripura’s First Property Marketplace"}
+            </h2>
+
+            <p className="mt-4 max-w-xl text-base text-white/80 sm:text-lg">
+              {activeSlide?.subtitle || "Buy • Sell • Rent Properties Across Tripura"}
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href={activeSlide?.link || "/properties"}
+                className="rounded-full bg-white px-6 py-3 font-semibold text-black"
               >
-                <div className="flex h-full items-end bg-gradient-to-b from-black/20 to-black/60 p-6">
-                  <div className="max-w-2xl text-white">
-                    <h2 className="text-3xl font-black sm:text-5xl">
-                      {slide.title}
-                    </h2>
+                Explore Now
+              </Link>
+              <Link
+                href="/properties"
+                className="rounded-full border border-white/30 px-6 py-3 font-semibold text-white"
+              >
+                Browse All
+              </Link>
+            </div>
+          </div>
 
-                    <p className="mt-2 text-sm text-white/90 sm:text-lg">
-                      {slide.subtitle}
-                    </p>
+          <div className="relative min-h-[320px] lg:min-h-[460px]">
+            {bannerSlides.map((slide, index) => (
+              <div
+                key={`${slide.title}-${index}`}
+                className={`absolute inset-0 transition-opacity duration-700 ${
+                  index === currentSlide ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                {slide.image ? (
+                  <img
+                    src={slide.image}
+                    alt={slide.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gray-900">
+                    <p className="text-white/70">Upload image from admin settings</p>
+                  </div>
+                )}
 
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      <Link
-                        href={slide.link}
-                        className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black"
-                      >
-                        Explore Now
-                      </Link>
-
-                      <Link
-                        href="/properties"
-                        className="rounded-full border border-white/30 px-5 py-2 text-sm font-semibold text-white"
-                      >
-                        Browse All
-                      </Link>
-                    </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
+                  <div className="max-w-md rounded-2xl bg-black/40 p-4 backdrop-blur-sm">
+                    <p className="text-sm text-white/70">Category: {slide.category}</p>
+                    <h3 className="mt-1 text-2xl font-bold">{slide.title}</h3>
+                    <p className="mt-2 text-sm text-white/80">{slide.subtitle}</p>
+                    <Link
+                      href={slide.link}
+                      className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-sm font-semibold text-black"
+                    >
+                      View Category
+                    </Link>
                   </div>
                 </div>
               </div>
-            </article>
-          ))}
+            ))}
+          </div>
         </div>
 
         <div className="mx-auto mt-3 flex max-w-6xl justify-center gap-2">
@@ -556,19 +564,16 @@ export default function Home() {
             placeholder="Search property..."
             className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
           />
-
           <select className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none">
             <option>All Locations</option>
             <option>Agartala</option>
             <option>Dharmanagar</option>
           </select>
-
           <select className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none">
             <option>Any Budget</option>
             <option>Under 20 Lakh</option>
             <option>20-50 Lakh</option>
           </select>
-
           <Link
             href="/properties"
             className="flex h-12 items-center justify-center rounded-2xl bg-emerald-600 text-sm font-semibold text-white"
@@ -583,7 +588,6 @@ export default function Home() {
           <div className="mx-auto max-w-6xl">
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-2xl font-black">Category</h3>
-
               <Link
                 href="/properties"
                 className="text-sm font-semibold text-emerald-600"
@@ -602,7 +606,6 @@ export default function Home() {
                   <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                     <item.icon className="h-6 w-6" />
                   </div>
-
                   <div className="text-sm font-semibold">{item.title}</div>
                 </Link>
               ))}
@@ -619,16 +622,16 @@ export default function Home() {
                 <h3 className="text-2xl font-black">
                   {viewMode === "saved" ? "Saved Properties" : "Featured Properties"}
                 </h3>
-
                 <p className="text-sm text-slate-500">Premium Tripura listings</p>
               </div>
 
-              <Link
-                href="/properties"
+              <button
+                type="button"
+                onClick={() => setViewMode("all")}
                 className="text-sm font-semibold text-emerald-600"
               >
                 View All
-              </Link>
+              </button>
             </div>
 
             {viewMode === "saved" && favoriteProperties.length === 0 ? (
@@ -639,7 +642,11 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-2 sm:gap-5">
                 {listToShow.map((item) => {
                   const isSaved = favoriteIds.includes(item.id);
-                  const badge = item.premium ? "Premium" : item.featured ? "Featured" : item.type.toUpperCase();
+                  const badge = item.premium
+                    ? "Premium"
+                    : item.featured
+                      ? "Featured"
+                      : item.type.toUpperCase();
 
                   return (
                     <Link
@@ -676,11 +683,9 @@ export default function Home() {
 
                         <div className="p-3 sm:p-5">
                           <h4 className="text-xs font-bold sm:text-lg">{item.title}</h4>
-
                           <p className="mt-1 text-[10px] text-slate-500 sm:text-sm">
                             {item.location}
                           </p>
-
                           <div className="mt-3 text-sm font-black text-emerald-600 sm:text-2xl">
                             {item.price}
                           </div>
@@ -737,6 +742,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-6xl grid-cols-5 px-2 py-2 text-center text-[10px] font-medium">
           <Link
             href="/"
+            onClick={() => setViewMode("all")}
             className="flex flex-col items-center gap-1 text-emerald-600"
           >
             <span className="text-xl">🏠</span>
@@ -761,7 +767,6 @@ export default function Home() {
             <span className="-mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg">
               <WhatsAppIcon className="h-6 w-6" />
             </span>
-
             <span className="mt-1 text-slate-700">Post</span>
           </button>
 

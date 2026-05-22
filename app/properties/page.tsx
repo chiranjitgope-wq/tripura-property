@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { properties as staticProperties, type Property, type PropertyType } from "@/lib/properties";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  properties as staticProperties,
+  type Property,
+  type PropertyType,
+} from "@/lib/properties";
 
 type FilterType = "all" | PropertyType;
 
@@ -25,17 +30,15 @@ function isValidProperty(item: unknown): item is Property {
 
 function dedupeBySlug(items: Property[]) {
   const map = new Map<string, Property>();
-
   for (const item of items) {
-    if (!map.has(item.slug)) {
-      map.set(item.slug, item);
-    }
+    if (!map.has(item.slug)) map.set(item.slug, item);
   }
-
   return Array.from(map.values());
 }
 
 export default function PropertiesPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [savedProperties, setSavedProperties] = useState<Property[]>([]);
   const [filterType, setFilterType] = useState<FilterType>("all");
 
@@ -45,7 +48,6 @@ export default function PropertiesPage() {
       if (!raw) return;
 
       const parsed = JSON.parse(raw);
-
       if (Array.isArray(parsed)) {
         setSavedProperties(parsed.filter(isValidProperty));
       }
@@ -55,34 +57,30 @@ export default function PropertiesPage() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const type = params.get("type");
+    const type = searchParams.get("type");
 
-    if (
-      type === "house" ||
-      type === "flat" ||
-      type === "plot" ||
-      type === "rent"
-    ) {
+    if (type === "house" || type === "flat" || type === "plot" || type === "rent") {
       setFilterType(type);
     } else {
       setFilterType("all");
     }
-  }, []);
+  }, [searchParams]);
 
-  const allProperties = useMemo(() => {
-    return dedupeBySlug([...savedProperties, ...staticProperties]);
-  }, [savedProperties]);
+  const allProperties = useMemo(
+    () => dedupeBySlug([...savedProperties, ...staticProperties]),
+    [savedProperties]
+  );
 
   const filteredProperties = useMemo(() => {
-    if (filterType === "all") return allProperties;
-    return allProperties.filter((property) => property.type === filterType);
-  }, [allProperties, filterType]);
+    const sorted = [...allProperties].sort(
+      (a, b) =>
+        Number(b.premium) - Number(a.premium) ||
+        Number(b.featured) - Number(a.featured)
+    );
 
-  const title =
-    filterType === "all"
-      ? "All Properties"
-      : `${filterType.charAt(0).toUpperCase()}${filterType.slice(1)} Properties`;
+    if (filterType === "all") return sorted;
+    return sorted.filter((property) => property.type === filterType);
+  }, [allProperties, filterType]);
 
   const filterLinks: { label: string; type: FilterType }[] = [
     { label: "All", type: "all" },
@@ -97,7 +95,11 @@ export default function PropertiesPage() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-black">{title}</h1>
+            <h1 className="text-3xl font-black capitalize">
+              {filterType === "all"
+                ? "All Properties"
+                : `${filterType} Properties`}
+            </h1>
             <p className="mt-2 text-sm text-slate-500">
               Total listings: {filteredProperties.length}
             </p>
@@ -116,13 +118,17 @@ export default function PropertiesPage() {
             const active = filterType === item.type;
 
             return (
-              <Link
+              <button
                 key={item.type}
-                href={
-                  item.type === "all"
-                    ? "/properties"
-                    : `/properties?type=${item.type}`
-                }
+                type="button"
+                onClick={() => {
+                  setFilterType(item.type);
+                  router.push(
+                    item.type === "all"
+                      ? "/properties"
+                      : `/properties?type=${item.type}`
+                  );
+                }}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                   active
                     ? "bg-emerald-600 text-white"
@@ -130,7 +136,7 @@ export default function PropertiesPage() {
                 }`}
               >
                 {item.label}
-              </Link>
+              </button>
             );
           })}
         </div>
@@ -152,11 +158,7 @@ export default function PropertiesPage() {
                   : property.type.toUpperCase();
 
               return (
-                <Link
-                  key={property.id}
-                  href={`/properties/${property.slug}`}
-                  className="block"
-                >
+                <Link key={property.id} href={`/properties/${property.slug}`} className="block">
                   <article className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
                     <div className="relative">
                       <img
@@ -164,7 +166,6 @@ export default function PropertiesPage() {
                         alt={property.title}
                         className="h-32 w-full object-cover sm:h-56"
                       />
-
                       <span className="absolute left-3 top-3 rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-semibold text-emerald-700">
                         {badge}
                       </span>
@@ -174,15 +175,12 @@ export default function PropertiesPage() {
                       <h2 className="text-xs font-bold sm:text-lg">
                         {property.title}
                       </h2>
-
                       <p className="mt-1 text-[10px] text-slate-500 sm:text-sm">
                         {property.location}
                       </p>
-
                       <div className="mt-3 text-sm font-black text-emerald-600 sm:text-2xl">
                         {property.price}
                       </div>
-
                       <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-slate-500 sm:text-xs">
                         <span className="rounded-full bg-slate-100 px-3 py-1">
                           {property.type}
