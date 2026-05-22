@@ -5,6 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { properties as staticProperties, type Property } from "@/lib/properties";
 
+type CategoryType = "house" | "flat" | "plot" | "rent";
+
+type AdminSettings = {
+  whatsappNumber: string;
+};
+
+const SETTINGS_KEY = "tripura-settings";
+
 function isValidProperty(item: unknown): item is Property {
   if (!item || typeof item !== "object") return false;
 
@@ -24,9 +32,13 @@ function isValidProperty(item: unknown): item is Property {
 
 function dedupeBySlug(items: Property[]) {
   const map = new Map<string, Property>();
+
   for (const item of items) {
-    if (!map.has(item.slug)) map.set(item.slug, item);
+    if (!map.has(item.slug)) {
+      map.set(item.slug, item);
+    }
   }
+
   return Array.from(map.values());
 }
 
@@ -36,8 +48,22 @@ export default function PropertyDetailPage() {
   const slug = Array.isArray(slugValue) ? slugValue[0] : slugValue;
 
   const [savedProperties, setSavedProperties] = useState<Property[]>([]);
+  const [whatsappNumber, setWhatsappNumber] = useState("919999999999");
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
-  const [property, setProperty] = useState<Property | null>(null);
+
+  useEffect(() => {
+    try {
+      const rawSettings = localStorage.getItem(SETTINGS_KEY);
+      if (rawSettings) {
+        const parsed = JSON.parse(rawSettings) as Partial<AdminSettings>;
+        if (parsed.whatsappNumber) {
+          setWhatsappNumber(parsed.whatsappNumber.replace(/[^\d]/g, ""));
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -45,7 +71,9 @@ export default function PropertyDetailPage() {
       if (!raw) return;
 
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) setSavedProperties(parsed.filter(isValidProperty));
+      if (Array.isArray(parsed)) {
+        setSavedProperties(parsed.filter(isValidProperty));
+      }
     } catch (error) {
       console.error("Failed to load saved properties:", error);
     }
@@ -70,10 +98,9 @@ export default function PropertyDetailPage() {
     [savedProperties]
   );
 
-  useEffect(() => {
-    if (!slug) return;
-    const found = allProperties.find((item) => item.slug === slug) || null;
-    setProperty(found);
+  const property = useMemo(() => {
+    if (!slug) return null;
+    return allProperties.find((item) => item.slug === slug) || null;
   }, [allProperties, slug]);
 
   function toggleFavorite(id: string) {
@@ -88,8 +115,10 @@ export default function PropertyDetailPage() {
   }
 
   function openWhatsApp(message: string) {
-    const number = "919999999999";
-    window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, "_blank");
+    window.open(
+      `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
   }
 
   async function shareProperty() {
@@ -228,10 +257,14 @@ export default function PropertyDetailPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => openWhatsApp(`Hi, I want details about ${property.title} in ${property.location}.`)}
+                onClick={() =>
+                  openWhatsApp(
+                    `Hi, I want details about ${property.title} in ${property.location}.`
+                  )
+                }
                 className="rounded-full bg-emerald-600 px-5 py-3 font-semibold text-white"
               >
-                WhatsApp
+                📱 Contact Seller
               </button>
 
               <button
@@ -239,7 +272,7 @@ export default function PropertyDetailPage() {
                 onClick={shareProperty}
                 className="rounded-full border px-5 py-3 font-semibold"
               >
-                Share
+                ↗ Share
               </button>
             </div>
 
