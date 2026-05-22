@@ -94,7 +94,12 @@ function BuildingIcon({ className = "" }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M4 20h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M4 20h16"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -375,7 +380,7 @@ export default function Home() {
   );
 
   const bannerSlides = useMemo(
-    () => settings.sliderBanners?.length ? settings.sliderBanners : defaultSettings.sliderBanners,
+    () => (settings.sliderBanners?.length ? settings.sliderBanners : defaultSettings.sliderBanners),
     [settings.sliderBanners]
   );
 
@@ -640,7 +645,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:gap-5">
-                {listToShow.map((item) => {
+                {listToShow.map((item, index) => {
                   const isSaved = favoriteIds.includes(item.id);
                   const badge = item.premium
                     ? "Premium"
@@ -648,12 +653,10 @@ export default function Home() {
                       ? "Featured"
                       : item.type.toUpperCase();
 
+                  const listingNo = `TP${String(index + 1).padStart(3, "0")}`;
+
                   return (
-                    <Link
-                      key={item.id}
-                      href={`/properties/${item.slug}`}
-                      className="block"
-                    >
+                    <Link key={item.id} href={`/properties/${item.slug}`} className="block">
                       <article className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
                         <div className="relative">
                           <img
@@ -666,6 +669,10 @@ export default function Home() {
                             {badge}
                           </span>
 
+                          <span className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+                            #{listingNo}
+                          </span>
+
                           <button
                             type="button"
                             onClick={(e) => {
@@ -673,7 +680,7 @@ export default function Home() {
                               e.stopPropagation();
                               toggleSaved(item.id);
                             }}
-                            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-emerald-600 shadow"
+                            className="absolute right-3 bottom-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-emerald-600 shadow"
                           >
                             <HeartIcon
                               className={`h-5 w-5 ${isSaved ? "fill-emerald-600" : ""}`}
@@ -683,24 +690,37 @@ export default function Home() {
 
                         <div className="p-3 sm:p-5">
                           <h4 className="text-xs font-bold sm:text-lg">{item.title}</h4>
+
                           <p className="mt-1 text-[10px] text-slate-500 sm:text-sm">
                             {item.location}
                           </p>
+
                           <div className="mt-3 text-sm font-black text-emerald-600 sm:text-2xl">
                             {item.price}
                           </div>
 
-                          <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-slate-500 sm:text-xs">
+                            <span className="rounded-full bg-slate-100 px-3 py-1">
+                              {item.type}
+                            </span>
+                            <span className="rounded-full bg-slate-100 px-3 py-1">
+                              {item.area}
+                            </span>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-2">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                openWhatsApp(`Hi, I want details for ${item.title}`);
+                                openWhatsApp(
+                                  `Hi, I want details for ${item.title} (${listingNo}).`
+                                );
                               }}
-                              className="flex items-center justify-center rounded-2xl bg-emerald-600 py-2 text-white"
+                              className="flex items-center justify-center rounded-2xl bg-emerald-600 px-3 py-3 text-xs font-semibold text-white sm:text-sm"
                             >
-                              <WhatsAppIcon className="h-5 w-5" />
+                              📱 Contact Seller
                             </button>
 
                             <button
@@ -710,9 +730,9 @@ export default function Home() {
                                 e.stopPropagation();
                                 await shareProperty(item);
                               }}
-                              className="flex items-center justify-center rounded-2xl border border-slate-200 py-2 text-slate-700"
+                              className="flex items-center justify-center rounded-2xl border border-slate-200 px-3 py-3 text-xs font-semibold text-slate-700 sm:text-sm"
                             >
-                              <ShareIcon className="h-5 w-5" />
+                              ↗ Share
                             </button>
                           </div>
                         </div>
@@ -728,12 +748,60 @@ export default function Home() {
 
       <section className="px-4 py-8">
         <div className="mx-auto max-w-6xl">
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-bold">About {settings.siteName}</h2>
-            <p className="mt-3 max-w-3xl text-gray-600">
-              Trusted property listings, category-wise browsing, and admin-managed
-              banners for buying, selling, and renting properties in Tripura.
-            </p>
+          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="mb-3 inline-flex rounded-full bg-emerald-100 px-4 py-2 text-xs font-semibold text-emerald-700">
+                  About Tripura Property
+                </p>
+
+                <h2 className="text-2xl font-black sm:text-3xl">
+                  Tripura’s trusted property marketplace
+                </h2>
+
+                <p className="mt-3 text-sm leading-6 text-slate-600 sm:text-base">
+                  Tripura Property helps people buy, sell, and rent verified homes,
+                  flats, plots, and rental listings across Tripura. The platform is
+                  designed for clean browsing, quick contact, and simple listing
+                  management from the admin panel.
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                    Verified listings
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                    Fast WhatsApp contact
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                    Buy • Sell • Rent
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3 lg:w-[360px] lg:grid-cols-1">
+                <div className="rounded-2xl bg-emerald-50 p-4">
+                  <p className="text-xs font-semibold text-emerald-700">Secure</p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    Simple and trusted property listings
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs font-semibold text-slate-700">Fast Contact</p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    Contact Seller button opens WhatsApp
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-yellow-50 p-4">
+                  <p className="text-xs font-semibold text-yellow-700">Easy Sharing</p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    Share listings with a clean link
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
