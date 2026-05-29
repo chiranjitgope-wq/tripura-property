@@ -1,37 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
-import { properties as staticProperties, type Property } from "@/lib/properties";
-
-type CategoryType = "house" | "flat" | "plot" | "rent";
+import { supabase } from "@/lib/supabase";
+import { type Property } from "@/lib/properties";
 
 type AdminSettings = {
   whatsappNumber: string;
 };
 
+type LeadForm = {
+  fullName: string;
+  phone: string;
+  budget: string;
+  area: string;
+  message: string;
+};
+
+type PropertyItem = Property & {
+  verified?: boolean;
+  urgent_sale?: boolean;
+};
+
 const SETTINGS_KEY = "tripura-settings";
+const FAVORITES_KEY = "tripura-favorites";
 
-function isValidProperty(item: unknown): item is Property {
-  if (!item || typeof item !== "object") return false;
-
-  const p = item as Record<string, unknown>;
-
-  return (
-    typeof p.id === "string" &&
-    typeof p.slug === "string" &&
-    typeof p.type === "string" &&
-    typeof p.title === "string" &&
-    typeof p.location === "string" &&
-    typeof p.price === "string" &&
-    typeof p.image === "string" &&
-    Array.isArray(p.images)
-  );
-}
-
-function dedupeBySlug(items: Property[]) {
-  const map = new Map<string, Property>();
+function dedupeBySlug(items: PropertyItem[]) {
+  const map = new Map<string, PropertyItem>();
 
   for (const item of items) {
     if (!map.has(item.slug)) {
@@ -47,9 +43,20 @@ export default function PropertyDetailPage() {
   const slugValue = params?.slug;
   const slug = Array.isArray(slugValue) ? slugValue[0] : slugValue;
 
-  const [savedProperties, setSavedProperties] = useState<Property[]>([]);
+  const [savedProperties, setSavedProperties] = useState<PropertyItem[]>([]);
   const [whatsappNumber, setWhatsappNumber] = useState("919999999999");
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyItem | null>(null);
+
+  const [leadForm, setLeadForm] = useState<LeadForm>({
+    fullName: "",
+    phone: "",
+    budget: "",
+    area: "",
+    message: "",
+  });
 
   useEffect(() => {
     try {
@@ -66,22 +73,32 @@ export default function PropertyDetailPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("tripura-properties");
-      if (!raw) return;
+    const loadProperties = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("properties")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        setSavedProperties(parsed.filter(isValidProperty));
+        if (error) {
+          console.error("Failed to load properties:", error);
+          setSavedProperties([]);
+        } else {
+          setSavedProperties(Array.isArray(data) ? (data as PropertyItem[]) : []);
+        }
+      } catch (error) {
+        console.error("Failed to load saved properties:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to load saved properties:", error);
-    }
+    };
+
+    loadProperties();
   }, []);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("tripura-favorites");
+      const raw = localStorage.getItem(FAVORITES_KEY);
       if (!raw) return;
 
       const parsed = JSON.parse(raw);
@@ -94,7 +111,7 @@ export default function PropertyDetailPage() {
   }, []);
 
   const allProperties = useMemo(
-    () => dedupeBySlug([...savedProperties, ...staticProperties]),
+    () => dedupeBySlug(savedProperties),
     [savedProperties]
   );
 
@@ -103,13 +120,28 @@ export default function PropertyDetailPage() {
     return allProperties.find((item) => item.slug === slug) || null;
   }, [allProperties, slug]);
 
+  const similarProperties = useMemo(() => {
+    if (!property) return [];
+
+    return allProperties
+      .filter(
+        (item) =>
+          item.id !== property.id &&
+          (item.type === property.type ||
+            item.location.toLowerCase().includes(
+              property.location.toLowerCase().split(",")[0] || ""
+            ))
+      )
+      .slice(0, 6);
+  }, [allProperties, property]);
+
   function toggleFavorite(id: string) {
     setFavoriteIds((prev) => {
       const next = prev.includes(id)
         ? prev.filter((item) => item !== id)
         : [...prev, id];
 
-      localStorage.setItem("tripura-favorites", JSON.stringify(next));
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
       return next;
     });
   }
@@ -119,6 +151,39 @@ export default function PropertyDetailPage() {
       `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`,
       "_blank"
     );
+  }
+
+  function handleLeadSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!property) return;
+
+    const finalMessage = `
+Hi, I am interested in this property.
+
+Property: ${property.title}
+Location: ${property.location}
+Price: ${property.price}
+
+Buyer Details:
+Name: ${leadForm.fullName}
+Mobile: ${leadForm.phone}
+Budget: ${leadForm.budget}
+Preferred Area: ${leadForm.area}
+
+Message:
+${leadForm.message || "Please share more details."}
+    `.trim();
+
+    openWhatsApp(finalMessage);
+    setShowLeadForm(false);
+    setSelectedProperty(null);
+    setLeadForm({
+      fullName: "",
+      phone: "",
+      budget: "",
+      area: "",
+      message: "",
+    });
   }
 
   async function shareProperty() {
@@ -155,6 +220,16 @@ export default function PropertyDetailPage() {
     );
   }
 
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-50 px-4 py-6">
+        <div className="mx-auto max-w-3xl rounded-3xl bg-white p-6 shadow-sm">
+          Loading property...
+        </div>
+      </main>
+    );
+  }
+
   if (!property) {
     return (
       <main className="min-h-screen bg-gray-50 px-4 py-6">
@@ -172,6 +247,15 @@ export default function PropertyDetailPage() {
   }
 
   const isFavorite = favoriteIds.includes(property.id);
+  const badge = property.premium
+    ? "Premium"
+    : property.featured
+      ? "Featured"
+      : property.type.toUpperCase();
+
+  const propertyId = `TP${String(
+    allProperties.findIndex((item) => item.id === property.id) + 1
+  ).padStart(3, "0")}`;
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-6">
@@ -182,14 +266,44 @@ export default function PropertyDetailPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-4">
-            <img
-              src={property.image}
-              alt={property.title}
-              className="h-80 w-full rounded-3xl object-cover bg-white shadow"
-            />
+            <div className="relative">
+              <img
+                src={property.image}
+                alt={property.title}
+                className="h-80 w-full rounded-3xl object-cover bg-white shadow"
+              />
+
+              <div className="absolute left-4 top-4 flex flex-col gap-2">
+                <span
+                  className={`rounded-full px-3 py-1 text-[10px] font-semibold ${
+                    property.premium
+                      ? "bg-yellow-400 text-black"
+                      : "bg-emerald-100 text-emerald-700"
+                  }`}
+                >
+                  {badge}
+                </span>
+
+                {property.verified && (
+                  <span className="rounded-full bg-blue-600 px-3 py-1 text-[10px] font-semibold text-white">
+                    ✅ Verified
+                  </span>
+                )}
+
+                {property.urgent_sale && (
+                  <span className="animate-pulse rounded-full bg-red-600 px-3 py-1 text-[10px] font-semibold text-white">
+                    🔥 Urgent Sale
+                  </span>
+                )}
+              </div>
+
+              <span className="absolute right-4 top-4 rounded-full bg-black/70 px-3 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+                #{propertyId}
+              </span>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {property.images?.map((img, index) => (
+              {(property.images || []).map((img, index) => (
                 <img
                   key={index}
                   src={img}
@@ -234,6 +348,16 @@ export default function PropertyDetailPage() {
                   Featured
                 </span>
               )}
+              {property.verified && (
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-700">
+                  Verified
+                </span>
+              )}
+              {property.urgent_sale && (
+                <span className="rounded-full bg-red-100 px-3 py-1 text-red-700">
+                  Urgent Sale
+                </span>
+              )}
             </div>
 
             <p className="mt-5 text-gray-700">{property.description}</p>
@@ -257,11 +381,17 @@ export default function PropertyDetailPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() =>
-                  openWhatsApp(
-                    `Hi, I want details about ${property.title} in ${property.location}.`
-                  )
-                }
+                onClick={() => {
+                  setSelectedProperty(property);
+                  setLeadForm({
+                    fullName: "",
+                    phone: "",
+                    budget: "",
+                    area: "",
+                    message: "",
+                  });
+                  setShowLeadForm(true);
+                }}
                 className="rounded-full bg-emerald-600 px-5 py-3 font-semibold text-white"
               >
                 📱 Contact Seller
@@ -291,7 +421,213 @@ export default function PropertyDetailPage() {
             )}
           </div>
         </div>
+
+        {similarProperties.length > 0 && (
+          <section className="mt-10">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Similar Properties</h2>
+              <Link href="/properties" className="text-sm font-semibold text-blue-600">
+                View all
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+              {similarProperties.map((item) => {
+                const itemBadge = item.premium
+                  ? "Premium"
+                  : item.featured
+                    ? "Featured"
+                    : item.type.toUpperCase();
+
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/properties/${item.slug}`}
+                    className="block"
+                  >
+                    <article className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                      <div className="relative">
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="h-32 w-full object-cover sm:h-56"
+                        />
+
+                        <div className="absolute left-3 top-3 flex flex-col gap-2">
+                          <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-semibold text-emerald-700">
+                            {itemBadge}
+                          </span>
+
+                          {item.verified && (
+                            <span className="rounded-full bg-blue-600 px-3 py-1 text-[10px] font-semibold text-white">
+                              ✅ Verified
+                            </span>
+                          )}
+
+                          {item.urgent_sale && (
+                            <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] font-semibold text-white">
+                              🔥 Urgent Sale
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="p-3 sm:p-5">
+                        <h3 className="text-xs font-bold sm:text-lg">{item.title}</h3>
+                        <p className="mt-1 text-[10px] text-slate-500 sm:text-sm">
+                          {item.location}
+                        </p>
+
+                        <div className="mt-3 text-sm font-black text-emerald-600 sm:text-2xl">
+                          {item.price}
+                        </div>
+                      </div>
+                    </article>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          setSelectedProperty(property);
+          setLeadForm({
+            fullName: "",
+            phone: "",
+            budget: "",
+            area: "",
+            message: "",
+          });
+          setShowLeadForm(true);
+        }}
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-2xl"
+        aria-label="Contact seller"
+      >
+        <span className="text-2xl">💬</span>
+      </button>
+
+      {showLeadForm && selectedProperty && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold">Contact Seller</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Fill this form and continue on WhatsApp.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLeadForm(false);
+                  setSelectedProperty(null);
+                }}
+                className="rounded-full border px-3 py-1 text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleLeadSubmit} className="mt-5 space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={leadForm.fullName}
+                  onChange={(e) =>
+                    setLeadForm((prev) => ({ ...prev, fullName: e.target.value }))
+                  }
+                  className="w-full rounded-xl border px-4 py-3 outline-none"
+                  placeholder="Enter your name"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">Mobile Number *</label>
+                <input
+                  type="tel"
+                  required
+                  value={leadForm.phone}
+                  onChange={(e) =>
+                    setLeadForm((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                  className="w-full rounded-xl border px-4 py-3 outline-none"
+                  placeholder="Enter your mobile number"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">Budget *</label>
+                <input
+                  type="text"
+                  required
+                  value={leadForm.budget}
+                  onChange={(e) =>
+                    setLeadForm((prev) => ({ ...prev, budget: e.target.value }))
+                  }
+                  className="w-full rounded-xl border px-4 py-3 outline-none"
+                  placeholder="Example: 35 Lakh"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Preferred Area *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={leadForm.area}
+                  onChange={(e) =>
+                    setLeadForm((prev) => ({ ...prev, area: e.target.value }))
+                  }
+                  className="w-full rounded-xl border px-4 py-3 outline-none"
+                  placeholder="Example: Agartala"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">Message</label>
+                <textarea
+                  value={leadForm.message}
+                  onChange={(e) =>
+                    setLeadForm((prev) => ({ ...prev, message: e.target.value }))
+                  }
+                  rows={4}
+                  className="w-full rounded-xl border px-4 py-3 outline-none"
+                  placeholder="Any extra requirement..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLeadForm(false);
+                    setSelectedProperty(null);
+                  }}
+                  className="flex-1 rounded-xl border px-4 py-3 font-semibold"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white"
+                >
+                  Send on WhatsApp
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

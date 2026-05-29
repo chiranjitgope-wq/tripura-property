@@ -4,29 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  properties as staticProperties,
   type Property,
   type PropertyType,
 } from "@/lib/properties";
+import { supabase } from "@/lib/supabase";
 
 type FilterType = "all" | PropertyType;
-
-function isValidProperty(item: unknown): item is Property {
-  if (!item || typeof item !== "object") return false;
-
-  const p = item as Record<string, unknown>;
-
-  return (
-    typeof p.id === "string" &&
-    typeof p.slug === "string" &&
-    typeof p.type === "string" &&
-    typeof p.title === "string" &&
-    typeof p.location === "string" &&
-    typeof p.price === "string" &&
-    typeof p.image === "string" &&
-    Array.isArray(p.images)
-  );
-}
 
 function dedupeBySlug(items: Property[]) {
   const map = new Map<string, Property>();
@@ -48,20 +31,26 @@ export default function PropertiesContent() {
   const [filterType, setFilterType] = useState<FilterType>("all");
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("tripura-properties");
-
-      if (!raw) return;
-
-      const parsed = JSON.parse(raw);
-
-      if (Array.isArray(parsed)) {
-        setSavedProperties(parsed.filter(isValidProperty));
-      }
-    } catch (error) {
-      console.error("Failed to load saved properties:", error);
-    }
+    loadProperties();
   }, []);
+
+  async function loadProperties() {
+    try {
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      setSavedProperties((data || []) as Property[]);
+    } catch (error) {
+      console.error("Failed to load properties:", error);
+    }
+  }
 
   useEffect(() => {
     const type = searchParams.get("type");
@@ -79,7 +68,7 @@ export default function PropertiesContent() {
   }, [searchParams]);
 
   const allProperties = useMemo(
-    () => dedupeBySlug([...savedProperties, ...staticProperties]),
+    () => dedupeBySlug(savedProperties),
     [savedProperties]
   );
 
@@ -166,12 +155,14 @@ export default function PropertiesContent() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-            {filteredProperties.map((property) => {
+            {filteredProperties.map((property, index) => {
               const badge = property.premium
                 ? "Premium"
                 : property.featured
                 ? "Featured"
                 : property.type.toUpperCase();
+
+              const propertyId = `TP${String(index + 1).padStart(3, "0")}`;
 
               return (
                 <Link
@@ -179,7 +170,13 @@ export default function PropertiesContent() {
                   href={`/properties/${property.slug}`}
                   className="block"
                 >
-                  <article className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                  <article
+                    className={`overflow-hidden rounded-[26px] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${
+                      property.premium
+                        ? "border-2 border-yellow-400"
+                        : "border border-slate-200"
+                    }`}
+                  >
                     <div className="relative">
                       <img
                         src={property.image}
@@ -187,8 +184,32 @@ export default function PropertiesContent() {
                         className="h-32 w-full object-cover sm:h-56"
                       />
 
-                      <span className="absolute left-3 top-3 rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-semibold text-emerald-700">
-                        {badge}
+                      <div className="absolute left-3 top-3 flex flex-col gap-2">
+                        <span
+                          className={`rounded-full px-3 py-1 text-[10px] font-semibold ${
+                            property.premium
+                              ? "bg-yellow-400 text-black"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {badge}
+                        </span>
+
+                        {property.verified && (
+                          <span className="rounded-full bg-blue-600 px-3 py-1 text-[10px] font-semibold text-white">
+                            ✅ Verified
+                          </span>
+                        )}
+
+                        {property.urgent_sale && (
+                          <span className="animate-pulse rounded-full bg-red-600 px-3 py-1 text-[10px] font-semibold text-white">
+                            🔥 Urgent Sale
+                          </span>
+                        )}
+                      </div>
+
+                      <span className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+                        #{propertyId}
                       </span>
                     </div>
 
@@ -212,6 +233,16 @@ export default function PropertiesContent() {
 
                         <span className="rounded-full bg-slate-100 px-3 py-1">
                           {property.area}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-500 sm:text-xs">
+                          Property ID: {propertyId}
+                        </span>
+
+                        <span className="rounded-full bg-green-50 px-3 py-1 text-[10px] font-semibold text-green-700">
+                          View Details →
                         </span>
                       </div>
                     </div>

@@ -8,10 +8,8 @@ import {
   useState,
   type ComponentType,
 } from "react";
-import {
-  properties as staticProperties,
-  type Property,
-} from "@/lib/properties";
+import { type Property } from "@/lib/properties";
+import { supabase } from "@/lib/supabase";
 
 type CategoryType = "house" | "flat" | "plot" | "rent";
 
@@ -40,7 +38,6 @@ type Category = {
 };
 
 const SETTINGS_KEY = "tripura-settings";
-const PROPERTIES_KEY = "tripura-properties";
 const FAVORITES_KEY = "tripura-favorites";
 
 const defaultSettings: AdminSettings = {
@@ -191,28 +188,6 @@ function HeartIcon({ className = "" }: { className?: string }) {
   );
 }
 
-function ShareIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path
-        d="M8 12l8-4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M8 12l8 4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <circle cx="6" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="18" cy="6" r="2.2" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="18" cy="18" r="2.2" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
 function WhatsAppIcon({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
@@ -283,7 +258,7 @@ export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    const load = () => {
+    const load = async () => {
       try {
         const rawSettings = localStorage.getItem(SETTINGS_KEY);
         if (rawSettings) setSettings(normalizeSettings(JSON.parse(rawSettings)));
@@ -292,10 +267,15 @@ export default function Home() {
       }
 
       try {
-        const rawProperties = localStorage.getItem(PROPERTIES_KEY);
-        if (rawProperties) {
-          const parsed = JSON.parse(rawProperties);
-          if (Array.isArray(parsed)) setSavedProperties(parsed.filter(isValidProperty));
+        const { data, error } = await supabase
+          .from("properties")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Failed to load properties:", error);
+        } else if (Array.isArray(data)) {
+          setSavedProperties(data as Property[]);
         }
       } catch (error) {
         console.error("Failed to load properties:", error);
@@ -317,7 +297,6 @@ export default function Home() {
     const onStorage = (event: StorageEvent) => {
       if (
         event.key === SETTINGS_KEY ||
-        event.key === PROPERTIES_KEY ||
         event.key === FAVORITES_KEY ||
         event.key === null
       ) {
@@ -330,7 +309,7 @@ export default function Home() {
   }, []);
 
   const allProperties = useMemo(
-    () => dedupeBySlug([...savedProperties, ...staticProperties]),
+    () => dedupeBySlug(savedProperties),
     [savedProperties]
   );
 
@@ -355,9 +334,11 @@ export default function Home() {
 
   useEffect(() => {
     if (!bannerSlides.length) return;
+
     const interval = window.setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
     }, 4000);
+
     return () => window.clearInterval(interval);
   }, [bannerSlides.length]);
 

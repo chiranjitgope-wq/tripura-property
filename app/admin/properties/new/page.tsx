@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 type Plan = "Free" | "Premium";
 type Category = "house" | "flat" | "plot" | "rent";
@@ -15,25 +16,6 @@ type Category = "house" | "flat" | "plot" | "rent";
 type PhotoSlot = {
   file: File | null;
   previewUrl: string | null;
-};
-
-type SavedProperty = {
-  id: string;
-  slug: string;
-  type: Category;
-  featured: boolean;
-  premium: boolean;
-  title: string;
-  location: string;
-  price: string;
-  priceValue: number;
-  area: string;
-  description: string;
-  image: string;
-  images: string[];
-  whatsappMessage: string;
-  stats: string[];
-  youtubeUrl?: string;
 };
 
 const emptySlot = (): PhotoSlot => ({
@@ -61,6 +43,9 @@ export default function AddPropertyPage() {
   const [description, setDescription] = useState("");
   const [area, setArea] = useState("");
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [urgentSale, setUrgentSale] = useState(false);
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>([
     emptySlot(),
@@ -169,48 +154,44 @@ export default function AddPropertyPage() {
       return;
     }
 
-    const generatedSlug = title
+    const slug = title
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9\s-]/g, "")
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-");
 
-    const imageUrls = await Promise.all(
-      filledPhotos.map((slot) => fileToDataUrl(slot.file!))
-    );
-
-    const newProperty: SavedProperty = {
-      id: generatedSlug,
-      slug: generatedSlug,
-      type: category,
-      featured: plan === "Premium",
-      premium: plan === "Premium",
-      title: title.trim(),
-      location: location.trim(),
-      price: price.trim(),
-      priceValue: Number(price.replace(/[^0-9]/g, "")) || 0,
-      area: area.trim() || "Not Added",
-      description: description.trim() || "Description not added yet.",
-      image: imageUrls[0],
-      images: imageUrls,
-      whatsappMessage: `Hi, I want details about ${title.trim()} in ${location.trim()}.`,
-      stats: [area.trim() || "New Listing"],
-      youtubeUrl: plan === "Premium" ? youtubeLink.trim() : undefined,
-    };
+    setSaving(true);
+    setMessage("");
 
     try {
-      const existingRaw = localStorage.getItem("tripura-properties");
-      const existing = existingRaw ? JSON.parse(existingRaw) : [];
+      const images = await Promise.all(
+        filledPhotos.map((slot) => fileToDataUrl(slot.file!))
+      );
 
-      const updated = Array.isArray(existing)
-        ? [newProperty, ...existing]
-        : [newProperty];
+      const { error } = await supabase.from("properties").insert({
+        slug,
+        type: category,
+        featured: plan === "Premium",
+        premium: plan === "Premium",
+        verified,
+        urgent_sale: urgentSale,
+        title: title.trim(),
+        location: location.trim(),
+        price: price.trim(),
+        price_value: Number(price.replace(/[^0-9]/g, "")) || 0,
+        area: area.trim() || "Not Added",
+        description: description.trim() || "Description not added yet.",
+        image: images[0],
+        images,
+        whatsapp_message: `Hi, I want details about ${title.trim()} in ${location.trim()}.`,
+        stats: [area.trim() || "New Listing"],
+        youtube_url: plan === "Premium" ? youtubeLink.trim() : null,
+      });
 
-      localStorage.setItem("tripura-properties", JSON.stringify(updated));
+      if (error) throw error;
 
       setMessage("Property saved successfully.");
-      console.log(newProperty);
 
       setTitle("");
       setPrice("");
@@ -220,6 +201,8 @@ export default function AddPropertyPage() {
       setYoutubeLink("");
       setDescription("");
       setArea("");
+      setVerified(false);
+      setUrgentSale(false);
       setPhotoSlots([
         emptySlot(),
         emptySlot(),
@@ -232,6 +215,8 @@ export default function AddPropertyPage() {
     } catch (error) {
       console.error(error);
       setMessage("Failed to save property.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -285,6 +270,28 @@ export default function AddPropertyPage() {
             placeholder="1200 Sqft"
             className="w-full rounded-xl border px-4 py-3 outline-none"
           />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="flex items-center gap-3 rounded-2xl border px-4 py-3">
+            <input
+              type="checkbox"
+              checked={verified}
+              onChange={(e) => setVerified(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="font-medium">Verified Property</span>
+          </label>
+
+          <label className="flex items-center gap-3 rounded-2xl border px-4 py-3">
+            <input
+              type="checkbox"
+              checked={urgentSale}
+              onChange={(e) => setUrgentSale(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="font-medium">Urgent Sale</span>
+          </label>
         </div>
 
         <div>
@@ -414,9 +421,10 @@ export default function AddPropertyPage() {
 
         <button
           type="submit"
-          className="rounded-xl bg-black px-6 py-3 text-white"
+          disabled={saving}
+          className="rounded-xl bg-black px-6 py-3 text-white disabled:opacity-60"
         >
-          Add Property
+          {saving ? "Saving..." : "Add Property"}
         </button>
       </form>
     </div>
