@@ -6,6 +6,8 @@ export type Property = {
   type: PropertyType;
   featured: boolean;
   premium: boolean;
+  verified?: boolean;
+  urgent_sale?: boolean;
   title: string;
   location: string;
   price: string;
@@ -28,6 +30,8 @@ export const properties: Property[] = [
     type: "plot",
     featured: true,
     premium: true,
+    verified: true,
+    urgent_sale: false,
     title: "Premium Road Facing Plot",
     location: "Agartala, Tripura",
     price: "₹18.00 Lakh",
@@ -51,6 +55,8 @@ export const properties: Property[] = [
     type: "plot",
     featured: true,
     premium: false,
+    verified: true,
+    urgent_sale: false,
     title: "Residential Corner Plot",
     location: "Ujjayanta Palace Road",
     price: "₹22.00 Lakh",
@@ -74,6 +80,8 @@ export const properties: Property[] = [
     type: "flat",
     featured: true,
     premium: true,
+    verified: true,
+    urgent_sale: false,
     title: "2 BHK Flat",
     location: "Kunjaban, Agartala",
     price: "₹32.00 Lakh",
@@ -98,6 +106,8 @@ export const properties: Property[] = [
     type: "flat",
     featured: true,
     premium: false,
+    verified: false,
+    urgent_sale: true,
     title: "3 BHK Premium Flat",
     location: "Agartala, Tripura",
     price: "₹48.00 Lakh",
@@ -122,6 +132,8 @@ export const properties: Property[] = [
     type: "house",
     featured: true,
     premium: false,
+    verified: true,
+    urgent_sale: false,
     title: "3 BHK Independent House",
     location: "Agartala, Tripura",
     price: "₹45.00 Lakh",
@@ -147,6 +159,8 @@ export const properties: Property[] = [
     type: "rent",
     featured: false,
     premium: false,
+    verified: false,
+    urgent_sale: false,
     title: "2 BHK Family Home",
     location: "R.K. Nagar, Agartala",
     price: "₹12,000 /month",
