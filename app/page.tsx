@@ -308,10 +308,7 @@ export default function Home() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const allProperties = useMemo(
-    () => dedupeBySlug(savedProperties),
-    [savedProperties]
-  );
+  const allProperties = useMemo(() => dedupeBySlug(savedProperties), [savedProperties]);
 
   const featuredProperties = useMemo(() => {
     return [...allProperties]
@@ -390,7 +387,6 @@ export default function Home() {
     }
   }
 
-  const activeSlide = bannerSlides[currentSlide];
   const listToShow = viewMode === "saved" ? favoriteProperties : featuredProperties;
 
   return (
@@ -569,16 +565,14 @@ export default function Home() {
                 <p className="text-sm text-slate-500">No saved properties yet.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:gap-5">
-                {listToShow.map((item, index) => {
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+                {listToShow.map((item) => {
                   const isSaved = favoriteIds.includes(item.id);
                   const badge = item.premium
                     ? "Premium"
                     : item.featured
                       ? "Featured"
                       : item.type.toUpperCase();
-
-                  const listingNo = `TP${String(index + 1).padStart(3, "0")}`;
 
                   return (
                     <Link key={item.id} href={`/properties/${item.slug}`} className="block">
@@ -587,15 +581,11 @@ export default function Home() {
                           <img
                             src={item.image}
                             alt={item.title}
-                            className="h-28 w-full object-cover sm:h-56"
+                            className="h-52 w-full object-cover sm:h-56 lg:h-64"
                           />
 
                           <span className="absolute left-3 top-3 rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-semibold text-emerald-700">
                             {badge}
-                          </span>
-
-                          <span className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
-                            #{listingNo}
                           </span>
 
                           <button
@@ -613,9 +603,9 @@ export default function Home() {
                           </button>
                         </div>
 
-                        <div className="p-3 sm:p-5">
-                          <h4 className="text-xs font-bold sm:text-lg">{item.title}</h4>
-                          <p className="mt-1 text-[10px] text-slate-500 sm:text-sm">
+                        <div className="p-4 sm:p-5">
+                          <h4 className="text-sm font-bold sm:text-lg">{item.title}</h4>
+                          <p className="mt-1 text-xs text-slate-500 sm:text-sm">
                             {item.location}
                           </p>
 
@@ -625,39 +615,14 @@ export default function Home() {
 
                           <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-slate-500 sm:text-xs">
                             <span className="rounded-full bg-slate-100 px-3 py-1">
-                              {item.type}
-                            </span>
-                            <span className="rounded-full bg-slate-100 px-3 py-1">
                               {item.area}
                             </span>
                           </div>
 
-                          <div className="mt-4 grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                openWhatsApp(
-                                  `Hi, I want details for ${item.title} (${listingNo}).`
-                                );
-                              }}
-                              className="flex items-center justify-center rounded-2xl bg-emerald-600 px-3 py-3 text-xs font-semibold text-white sm:text-sm"
-                            >
-                              📱 Contact Seller
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                await shareProperty(item);
-                              }}
-                              className="flex items-center justify-center rounded-2xl border border-slate-200 px-3 py-3 text-xs font-semibold text-slate-700 sm:text-sm"
-                            >
-                              ↗ Share
-                            </button>
+                          <div className="mt-4">
+                            <span className="inline-flex rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700">
+                              View Details →
+                            </span>
                           </div>
                         </div>
                       </article>
