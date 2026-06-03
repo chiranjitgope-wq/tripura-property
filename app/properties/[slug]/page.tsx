@@ -48,7 +48,9 @@ export default function PropertyDetailPage() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLeadForm, setShowLeadForm] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<PropertyItem | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyItem | null>(
+    null
+  );
 
   const [leadForm, setLeadForm] = useState<LeadForm>({
     fullName: "",
@@ -128,9 +130,9 @@ export default function PropertyDetailPage() {
         (item) =>
           item.id !== property.id &&
           (item.type === property.type ||
-            item.location.toLowerCase().includes(
-              property.location.toLowerCase().split(",")[0] || ""
-            ))
+            item.location
+              .toLowerCase()
+              .includes(property.location.toLowerCase().split(",")[0] || ""))
       )
       .slice(0, 6);
   }, [allProperties, property]);
@@ -155,14 +157,14 @@ export default function PropertyDetailPage() {
 
   function handleLeadSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!property) return;
+    if (!selectedProperty) return;
 
     const finalMessage = `
 Hi, I am interested in this property.
 
-Property: ${property.title}
-Location: ${property.location}
-Price: ${property.price}
+Property: ${selectedProperty.title}
+Location: ${selectedProperty.location}
+Price: ${selectedProperty.price}
 
 Buyer Details:
 Name: ${leadForm.fullName}
@@ -238,7 +240,10 @@ ${leadForm.message || "Please share more details."}
           <p className="mt-2 text-gray-600">
             This property may not exist yet.
           </p>
-          <Link href="/properties" className="mt-4 inline-block text-blue-600">
+          <Link
+            href="/properties"
+            className="mt-4 inline-block rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-md"
+          >
             Back to properties
           </Link>
         </div>
@@ -260,9 +265,21 @@ ${leadForm.message || "Please share more details."}
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-6">
       <div className="mx-auto max-w-6xl">
-        <Link href="/properties" className="mb-4 inline-block text-blue-600">
-          ← Back to properties
-        </Link>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <Link
+            href="/properties"
+            className="inline-block rounded-full bg-gradient-to-r from-slate-900 to-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-md"
+          >
+            ← Back to properties
+          </Link>
+
+          <Link
+            href="/"
+            className="inline-block rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-2 text-sm font-semibold text-white shadow-md"
+          >
+            Home
+          </Link>
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-4">
@@ -275,23 +292,23 @@ ${leadForm.message || "Please share more details."}
 
               <div className="absolute left-4 top-4 flex flex-col gap-2">
                 <span
-                  className={`rounded-full px-3 py-1 text-[10px] font-semibold ${
+                  className={`rounded-full px-3 py-1 text-[10px] font-semibold shadow-md ${
                     property.premium
-                      ? "bg-yellow-400 text-black"
-                      : "bg-emerald-100 text-emerald-700"
+                      ? "bg-gradient-to-r from-yellow-400 to-amber-500 text-black"
+                      : "bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
                   }`}
                 >
                   {badge}
                 </span>
 
                 {property.verified && (
-                  <span className="rounded-full bg-blue-600 px-3 py-1 text-[10px] font-semibold text-white">
+                  <span className="rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1 text-[10px] font-semibold text-white shadow-md">
                     ✅ Verified
                   </span>
                 )}
 
                 {property.urgent_sale && (
-                  <span className="animate-pulse rounded-full bg-red-600 px-3 py-1 text-[10px] font-semibold text-white">
+                  <span className="animate-pulse rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-3 py-1 text-[10px] font-semibold text-white shadow-md">
                     🔥 Urgent Sale
                   </span>
                 )}
@@ -324,7 +341,7 @@ ${leadForm.message || "Please share more details."}
               <button
                 type="button"
                 onClick={() => toggleFavorite(property.id)}
-                className="rounded-full border px-4 py-2 text-sm font-medium"
+                className="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2 text-sm font-medium text-black shadow-md"
               >
                 {isFavorite ? "Saved" : "Save"}
               </button>
@@ -392,7 +409,7 @@ ${leadForm.message || "Please share more details."}
                   });
                   setShowLeadForm(true);
                 }}
-                className="rounded-full bg-emerald-600 px-5 py-3 font-semibold text-white"
+                className="rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 px-5 py-3 font-semibold text-white shadow-lg"
               >
                 📱 Contact Seller
               </button>
@@ -400,7 +417,7 @@ ${leadForm.message || "Please share more details."}
               <button
                 type="button"
                 onClick={shareProperty}
-                className="rounded-full border px-5 py-3 font-semibold"
+                className="rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 font-semibold text-white shadow-lg"
               >
                 ↗ Share
               </button>
@@ -413,7 +430,7 @@ ${leadForm.message || "Please share more details."}
                   href={property.youtubeUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-blue-600 underline"
+                  className="inline-flex rounded-full bg-gradient-to-r from-red-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-md"
                 >
                   Open YouTube link
                 </a>
@@ -426,7 +443,10 @@ ${leadForm.message || "Please share more details."}
           <section className="mt-10">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-2xl font-bold">Similar Properties</h2>
-              <Link href="/properties" className="text-sm font-semibold text-blue-600">
+              <Link
+                href="/properties"
+                className="text-sm font-semibold text-blue-600"
+              >
                 View all
               </Link>
             </div>
@@ -454,18 +474,18 @@ ${leadForm.message || "Please share more details."}
                         />
 
                         <div className="absolute left-3 top-3 flex flex-col gap-2">
-                          <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-semibold text-emerald-700">
+                          <span className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1 text-[10px] font-semibold text-white shadow-md">
                             {itemBadge}
                           </span>
 
                           {item.verified && (
-                            <span className="rounded-full bg-blue-600 px-3 py-1 text-[10px] font-semibold text-white">
+                            <span className="rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1 text-[10px] font-semibold text-white shadow-md">
                               ✅ Verified
                             </span>
                           )}
 
                           {item.urgent_sale && (
-                            <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] font-semibold text-white">
+                            <span className="rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-3 py-1 text-[10px] font-semibold text-white shadow-md">
                               🔥 Urgent Sale
                             </span>
                           )}
@@ -473,7 +493,9 @@ ${leadForm.message || "Please share more details."}
                       </div>
 
                       <div className="p-3 sm:p-5">
-                        <h3 className="text-xs font-bold sm:text-lg">{item.title}</h3>
+                        <h3 className="text-xs font-bold sm:text-lg">
+                          {item.title}
+                        </h3>
                         <p className="mt-1 text-[10px] text-slate-500 sm:text-sm">
                           {item.location}
                         </p>
@@ -504,7 +526,7 @@ ${leadForm.message || "Please share more details."}
           });
           setShowLeadForm(true);
         }}
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-2xl"
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-2xl"
         aria-label="Contact seller"
       >
         <span className="text-2xl">💬</span>
@@ -549,7 +571,9 @@ ${leadForm.message || "Please share more details."}
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">Mobile Number *</label>
+                <label className="mb-1 block text-sm font-medium">
+                  Mobile Number *
+                </label>
                 <input
                   type="tel"
                   required
@@ -612,14 +636,14 @@ ${leadForm.message || "Please share more details."}
                     setShowLeadForm(false);
                     setSelectedProperty(null);
                   }}
-                  className="flex-1 rounded-xl border px-4 py-3 font-semibold"
+                  className="flex-1 rounded-xl bg-slate-200 px-4 py-3 font-semibold text-slate-800"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-4 py-3 font-semibold text-white shadow-md"
                 >
                   Send on WhatsApp
                 </button>
