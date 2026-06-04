@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { supabase } from "@/lib/supabase";
 
 type CategoryType = "house" | "flat" | "plot" | "rent";
 
@@ -186,11 +187,28 @@ export default function AdminSettingsPage() {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+  try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+
+    const { error } = await supabase
+      .from("settings")
+      .upsert({
+        id: 1,
+        data: settings,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) throw error;
+
     setSavedMessage("Settings saved successfully.");
-    setTimeout(() => setSavedMessage(""), 2500);
-  };
+  } catch (error) {
+    console.error(error);
+    setSavedMessage("Failed to save settings.");
+  }
+
+  setTimeout(() => setSavedMessage(""), 2500);
+};
 
   const handleReset = () => {
     setSettings(defaultSettings);
