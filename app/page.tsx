@@ -260,11 +260,19 @@ export default function Home() {
   useEffect(() => {
     const load = async () => {
       try {
-        const rawSettings = localStorage.getItem(SETTINGS_KEY);
-        if (rawSettings) setSettings(normalizeSettings(JSON.parse(rawSettings)));
-      } catch (error) {
-        console.error("Failed to load settings:", error);
-      }
+        try {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("data")
+    .eq("id", 1)
+    .single();
+
+  if (!error && data?.data) {
+    setSettings(normalizeSettings(data.data));
+  }
+} catch (error) {
+  console.error("Failed to load settings:", error);
+}
 
       try {
         const { data, error } = await supabase
