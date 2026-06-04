@@ -10,7 +10,6 @@ import {
 } from "react";
 import { type Property } from "@/lib/properties";
 import { supabase } from "@/lib/supabase";
-import { loadSiteSettings, type SiteSettings } from "@/lib/site-settings";
 
 type CategoryType = "house" | "flat" | "plot" | "rent";
 
@@ -38,6 +37,7 @@ type Category = {
   href: string;
 };
 
+const SETTINGS_KEY = "tripura-settings";
 const FAVORITES_KEY = "tripura-favorites";
 
 const defaultSettings: AdminSettings = {
@@ -134,12 +134,7 @@ function BuildingIcon({ className = "" }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M4 20h16"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
+      <path d="M4 20h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -207,6 +202,27 @@ function WhatsAppIcon({ className = "" }: { className?: string }) {
   );
 }
 
+function normalizeSettings(parsed: any): AdminSettings {
+  const banners = Array.isArray(parsed?.sliderBanners) ? parsed.sliderBanners : [];
+
+  return {
+    ...defaultSettings,
+    ...parsed,
+    sliderBanners: Array.from({ length: 5 }, (_, i) => {
+      const b = banners[i];
+      const fallback = defaultSettings.sliderBanners[i];
+
+      return {
+        image: b?.image || fallback.image,
+        title: b?.title || fallback.title,
+        subtitle: b?.subtitle || fallback.subtitle,
+        link: b?.link || fallback.link,
+        category: (b?.category || fallback.category) as CategoryType,
+      };
+    }),
+  };
+}
+
 function isValidProperty(item: unknown): item is Property {
   if (!item || typeof item !== "object") return false;
 
@@ -244,15 +260,10 @@ export default function Home() {
   useEffect(() => {
     const load = async () => {
       try {
-        const siteSettings: SiteSettings = await loadSiteSettings();
-
-        setSettings((prev) => ({
-          ...prev,
-          siteName: siteSettings.siteName || prev.siteName,
-          whatsappNumber: siteSettings.whatsappNumber || prev.whatsappNumber,
-        }));
+        const rawSettings = localStorage.getItem(SETTINGS_KEY);
+        if (rawSettings) setSettings(normalizeSettings(JSON.parse(rawSettings)));
       } catch (error) {
-        console.error("Failed to load site settings:", error);
+        console.error("Failed to load settings:", error);
       }
 
       try {
@@ -274,9 +285,7 @@ export default function Home() {
         const rawFavorites = localStorage.getItem(FAVORITES_KEY);
         if (rawFavorites) {
           const parsed = JSON.parse(rawFavorites);
-          if (Array.isArray(parsed)) {
-            setFavoriteIds(parsed.filter((id) => typeof id === "string"));
-          }
+          if (Array.isArray(parsed)) setFavoriteIds(parsed.filter((id) => typeof id === "string"));
         }
       } catch (error) {
         console.error("Failed to load favorites:", error);
@@ -286,7 +295,11 @@ export default function Home() {
     load();
 
     const onStorage = (event: StorageEvent) => {
-      if (event.key === FAVORITES_KEY || event.key === null) {
+      if (
+        event.key === SETTINGS_KEY ||
+        event.key === FAVORITES_KEY ||
+        event.key === null
+      ) {
         load();
       }
     };
@@ -295,10 +308,7 @@ export default function Home() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const allProperties = useMemo(
-    () => dedupeBySlug(savedProperties),
-    [savedProperties]
-  );
+  const allProperties = useMemo(() => dedupeBySlug(savedProperties), [savedProperties]);
 
   const featuredProperties = useMemo(() => {
     return [...allProperties]
@@ -340,9 +350,7 @@ export default function Home() {
 
   function toggleSaved(id: string) {
     setFavoriteIds((prev) => {
-      const next = prev.includes(id)
-        ? prev.filter((item) => item !== id)
-        : [...prev, id];
+      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
       return next;
     });
@@ -405,7 +413,7 @@ export default function Home() {
 
           <Link
             href="/properties"
-            className="rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md"
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold"
           >
             Properties
           </Link>
@@ -612,7 +620,7 @@ export default function Home() {
                           </div>
 
                           <div className="mt-4">
-                            <span className="inline-flex rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 px-4 py-2 text-xs font-semibold text-white shadow-md">
+                            <span className="inline-flex rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700">
                               View Details →
                             </span>
                           </div>
