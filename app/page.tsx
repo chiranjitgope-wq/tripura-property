@@ -399,102 +399,77 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#f6f7fb] pb-28 text-slate-900">
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-3">
+    
+
+      <section className="px-2 pt-2 sm:px-4 sm:pt-4">
+  <div className="mx-auto max-w-6xl overflow-hidden rounded-[24px] shadow-2xl">
+    <div className="relative h-[230px] sm:h-[500px] lg:h-[650px]">
+
+      {bannerSlides.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 transition-opacity duration-700 ${
+            index === currentSlide ? "z-10 opacity-100" : "z-0 opacity-0"
+          }`}
+        >
+          <Link href={slide.link} className="block h-full w-full">
             <img
-              src="/logo.png"
-              alt={settings.siteName}
-              className="h-10 w-10 rounded-full object-cover"
+              src={slide.image}
+              alt={slide.title}
+              className="h-full w-full object-cover object-center cursor-pointer"
             />
-
-            <div>
-              <h1 className="text-xl font-black">
-                <span>{settings.siteName.split(" ")[0] || "Tripura"}</span>
-                <span className="text-emerald-600">
-                  {settings.siteName.split(" ").slice(1).join(" ") || "Property"}
-                </span>
-              </h1>
-              <p className="text-xs text-slate-500">Premium Property Listings</p>
-            </div>
-          </Link>
-
-          <Link
-            href="/properties"
-            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold"
-          >
-            Properties
           </Link>
         </div>
-      </header>
+      ))}
 
-      <section className="px-4 pt-4">
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-[30px] shadow-2xl">
-          <div className="relative h-[260px] sm:h-[420px]">
-            {bannerSlides.map((slide, index) => (
-              <div
-                key={index}
-                className={`absolute inset-0 transition-opacity duration-700 ${
-                  index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
-                }`}
-              >
-                <img
-                  src={slide.image}
-                  alt={slide.title}
-                  className="h-full w-full object-cover"
-                />
+      <button
+        type="button"
+        onClick={() =>
+          setCurrentSlide(
+            (prev) =>
+              (prev - 1 + bannerSlides.length) %
+              bannerSlides.length
+          )
+        }
+        className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 px-4 py-2 text-2xl text-white"
+      >
+        ‹
+      </button>
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+      <button
+        type="button"
+        onClick={() =>
+          setCurrentSlide(
+            (prev) =>
+              (prev + 1) %
+              bannerSlides.length
+          )
+        }
+        className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 px-4 py-2 text-2xl text-white"
+      >
+        ›
+      </button>
 
-                <div className="absolute bottom-0 left-0 p-6 sm:p-10 text-white">
-                  <p className="mb-3 inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-semibold backdrop-blur-sm">
-                    {slide.category.toUpperCase()}
-                  </p>
+      <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+        {bannerSlides.map((_, index) => (
+          <button
+            key={index}
+            type="button"
+            onClick={() => setCurrentSlide(index)}
+            className={`h-2 rounded-full transition-all ${
+              currentSlide === index
+                ? "w-8 bg-white"
+                : "w-2 bg-white/50"
+            }`}
+          />
+        ))}
+      </div>
 
-                  <h2 className="max-w-2xl text-3xl font-black leading-tight sm:text-5xl">
-                    {slide.title}
-                  </h2>
+    </div>
+  </div>
+</section>
 
-                  <p className="mt-3 max-w-xl text-sm text-white/90 sm:text-lg">
-                    {slide.subtitle}
-                  </p>
-
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <Link
-                      href={slide.link}
-                      className="rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg"
-                    >
-                      Explore Now
-                    </Link>
-
-                    <Link
-                      href="/properties"
-                      className="rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm"
-                    >
-                      Browse Properties
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-              {bannerSlides.map((_, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setCurrentSlide(index)}
-                  className={`h-2 rounded-full transition-all ${
-                    currentSlide === index ? "w-8 bg-white" : "w-2 bg-white/50"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="-mt-6 px-4">
+      <section className="px-4 pt-3">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-2 rounded-[24px] border border-slate-200 bg-white p-3 shadow-xl lg:grid-cols-4">
           <input
             type="text"
