@@ -258,21 +258,21 @@ export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        try {
-  const { data, error } = await supabase
-    .from("settings")
-    .select("data")
-    .eq("id", 1)
-    .single();
+  const load = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("settings")
+        .select("data")
+        .eq("id", 1)
+        .single();
 
-  if (!error && data?.data) {
-    setSettings(normalizeSettings(data.data));
-  }
-} catch (error) {
-  console.error("Failed to load settings:", error);
-}
+      if (!error && data?.data) {
+        setSettings(normalizeSettings(data.data));
+      }
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+    }
+
 
       try {
         const { data, error } = await supabase
