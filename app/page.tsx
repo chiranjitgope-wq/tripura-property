@@ -216,6 +216,8 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [currentSlide, setCurrentSlide] = useState(0);
 
+const [searchText, setSearchText] = useState("");
+const [location, setLocation] = useState("");
   useEffect(() => {
   const load = async () => {
     try {
@@ -427,29 +429,32 @@ const bannerSlides = settings.sliderBanners || [];
 </section>
 
       <section className="px-4 pt-3">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-2 rounded-[24px] border border-slate-200 bg-white p-3 shadow-xl lg:grid-cols-4">
-          <input
-            type="text"
-            placeholder="Search property..."
-            className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
-          />
-          <select className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none">
-            <option>All Locations</option>
-            <option>Agartala</option>
-            <option>Dharmanagar</option>
-          </select>
-          <select className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none">
-            <option>Any Budget</option>
-            <option>Under 20 Lakh</option>
-            <option>20-50 Lakh</option>
-          </select>
-          <Link
-            href="/properties"
-            className="flex h-12 items-center justify-center rounded-2xl bg-emerald-600 text-sm font-semibold text-white"
-          >
-            Search
-          </Link>
-        </div>
+        <div className="mx-auto grid max-w-6xl gap-2 md:grid-cols-3">
+  <input
+    type="text"
+    placeholder="Search property..."
+    value={searchText}
+    onChange={(e) => setSearchText(e.target.value)}
+    className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
+  />
+
+  <select
+    value={location}
+    onChange={(e) => setLocation(e.target.value)}
+    className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
+  >
+    <option value="">All Locations</option>
+    <option value="Agartala">Agartala</option>
+    <option value="Dharmanagar">Dharmanagar</option>
+  </select>
+
+  <Link
+    href={`/properties?search=${encodeURIComponent(searchText)}&location=${encodeURIComponent(location)}`}
+    className="flex h-12 items-center justify-center rounded-2xl bg-emerald-600 text-sm font-semibold text-white"
+  >
+    Search
+  </Link>
+</div>
       </section>
 
       {settings.enableCategorySection && (

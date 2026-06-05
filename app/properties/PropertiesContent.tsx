@@ -26,6 +26,8 @@ function dedupeBySlug(items: Property[]) {
 export default function PropertiesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+const searchQuery = searchParams.get("search")?.toLowerCase() || "";
+const locationQuery = searchParams.get("location")?.toLowerCase() || "";
 
   const [savedProperties, setSavedProperties] = useState<Property[]>([]);
   const [filterType, setFilterType] = useState<FilterType>("all");
@@ -72,17 +74,41 @@ export default function PropertiesContent() {
     [savedProperties]
   );
 
-  const filteredProperties = useMemo(() => {
-    const sorted = [...allProperties].sort(
-      (a, b) =>
-        Number(b.premium) - Number(a.premium) ||
-        Number(b.featured) - Number(a.featured)
+ const filteredProperties = useMemo(() => {
+  let sorted = [...allProperties].sort(
+    (a, b) =>
+      Number(b.premium) - Number(a.premium) ||
+      Number(b.featured) - Number(a.featured)
+  );
+
+  if (filterType !== "all") {
+    sorted = sorted.filter(
+      (property) => property.type === filterType
     );
+  }
 
-    if (filterType === "all") return sorted;
+  if (searchQuery) {
+    sorted = sorted.filter(
+      (property) =>
+        property.title?.toLowerCase().includes(searchQuery) ||
+        property.location?.toLowerCase().includes(searchQuery)
+    );
+  }
 
-    return sorted.filter((property) => property.type === filterType);
-  }, [allProperties, filterType]);
+  if (locationQuery) {
+    sorted = sorted.filter(
+      (property) =>
+        property.location?.toLowerCase().includes(locationQuery)
+    );
+  }
+
+  return sorted;
+}, [
+  allProperties,
+  filterType,
+  searchQuery,
+  locationQuery,
+]);
 
   const filterLinks: { label: string; type: FilterType }[] = [
     { label: "All", type: "all" },
@@ -109,11 +135,11 @@ export default function PropertiesContent() {
           </div>
 
           <Link
-            href="/"
-            className="inline-flex w-fit rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold"
-          >
-            ← Home
-          </Link>
+  href="/"
+  className="inline-flex w-fit rounded-full bg-gradient-to-r from-emerald-600 to-green-500 px-5 py-2 text-sm font-bold text-white shadow-lg hover:scale-105 transition"
+>
+  🏠 Home
+</Link>
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2">
