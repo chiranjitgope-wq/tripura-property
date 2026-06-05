@@ -45,48 +45,7 @@ const defaultSettings: AdminSettings = {
   whatsappNumber: "919999999999",
   enableFeaturedSection: true,
   enableCategorySection: true,
-  sliderBanners: [
-    {
-      title: "Tripura’s First Property Marketplace",
-      subtitle: "Buy • Sell • Rent Properties Across Tripura",
-      image:
-        "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2070&auto=format&fit=crop",
-      link: "/properties?type=flat",
-      category: "flat",
-    },
-    {
-      title: "Find Trusted House Listings",
-      subtitle: "Verified homes, plots and rental properties",
-      image:
-        "https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=2070&auto=format&fit=crop",
-      link: "/properties?type=house",
-      category: "house",
-    },
-    {
-      title: "Explore Premium Plots",
-      subtitle: "Road-facing and investment-ready land offers",
-      image:
-        "https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2070&auto=format&fit=crop",
-      link: "/properties?type=plot",
-      category: "plot",
-    },
-    {
-      title: "Best Rental Homes",
-      subtitle: "Affordable family homes and city rentals",
-      image:
-        "https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=2070&auto=format&fit=crop",
-      link: "/properties?type=rent",
-      category: "rent",
-    },
-    {
-      title: "Premium Property Deals",
-      subtitle: "Featured listings with more photos and video",
-      image:
-        "https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=2070&auto=format&fit=crop",
-      link: "/properties",
-      category: "flat",
-    },
-  ],
+  sliderBanners: [],
 };
 
 function HouseIcon({ className = "" }: { className?: string }) {
@@ -333,9 +292,7 @@ export default function Home() {
     [allProperties, favoriteIds]
   );
 
-  const bannerSlides = settings.sliderBanners?.length
-    ? settings.sliderBanners
-    : defaultSettings.sliderBanners;
+const bannerSlides = settings.sliderBanners || [];
 
   useEffect(() => {
     if (!bannerSlides.length) return;
