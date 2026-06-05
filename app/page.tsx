@@ -358,7 +358,56 @@ const bannerSlides = settings.sliderBanners || [];
 
   return (
     <main className="min-h-screen bg-[#f6f7fb] pb-28 text-slate-900">
-    
+    <section className="px-2 pt-2">
+  <div className="mx-auto max-w-6xl rounded-2xl bg-white p-3 shadow-xl">
+
+    <div className="mb-2 text-center">
+  <div className="flex items-center justify-center gap-2">
+    <img
+      src="/logo.png"
+      alt="Tripura Property"
+      className="h-8 w-8 rounded-full"
+    />
+    <span className="text-lg font-black">
+      Tripura<span className="text-emerald-600">Property</span>
+    </span>
+  </div>
+
+  <p className="mt-1 text-xs text-slate-500">
+    Buy • Sell • Rent Across Tripura
+  </p>
+</div>
+
+    <div className="grid grid-cols-[1.6fr_1fr_auto] gap-2">
+
+      <input
+        type="text"
+        placeholder="Search property..."
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none"
+      />
+
+      <select
+        value={location}
+        onChange={(e) => setLocation(e.target.value)}
+        className="h-11 rounded-xl border border-slate-200 px-2 text-sm outline-none"
+      >
+        <option value="">Area</option>
+        <option value="Agartala">Agartala</option>
+        <option value="Dharmanagar">Dharmanagar</option>
+      </select>
+
+      <Link
+        href={`/properties?search=${encodeURIComponent(searchText)}&location=${encodeURIComponent(location)}`}
+        className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold"
+      >
+        🔍
+      </Link>
+
+    </div>
+  </div>
+</section>
 
       <section className="px-2 pt-2 sm:px-4 sm:pt-4">
   <div className="mx-auto max-w-6xl overflow-hidden rounded-[24px] shadow-2xl">
@@ -428,34 +477,7 @@ const bannerSlides = settings.sliderBanners || [];
   </div>
 </section>
 
-      <section className="px-4 pt-3">
-        <div className="mx-auto grid max-w-6xl gap-2 md:grid-cols-3">
-  <input
-    type="text"
-    placeholder="Search property..."
-    value={searchText}
-    onChange={(e) => setSearchText(e.target.value)}
-    className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
-  />
-
-  <select
-    value={location}
-    onChange={(e) => setLocation(e.target.value)}
-    className="h-12 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
-  >
-    <option value="">All Locations</option>
-    <option value="Agartala">Agartala</option>
-    <option value="Dharmanagar">Dharmanagar</option>
-  </select>
-
-  <Link
-    href={`/properties?search=${encodeURIComponent(searchText)}&location=${encodeURIComponent(location)}`}
-    className="flex h-12 items-center justify-center rounded-2xl bg-emerald-600 text-sm font-semibold text-white"
-  >
-    Search
-  </Link>
-</div>
-      </section>
+    
 
       {settings.enableCategorySection && (
         <section className="px-4 py-8">
