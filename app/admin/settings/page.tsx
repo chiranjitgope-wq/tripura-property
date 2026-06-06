@@ -44,7 +44,7 @@ const emptyBanner = (index: number): BannerSlide => ({
 
 const defaultSettings: AdminSettings = {
   siteName: "Tripura Property",
-  whatsappNumber: "919999999999",
+  whatsappNumber: "",
   supportEmail: "support@tripuraproperty.com",
   officeAddress: "Agartala, Tripura",
   facebookLink: "",

@@ -42,7 +42,7 @@ const FAVORITES_KEY = "tripura-favorites";
 
 const defaultSettings: AdminSettings = {
   siteName: "Tripura Property",
-  whatsappNumber: "919999999999",
+  whatsappNumber: "",
   enableFeaturedSection: true,
   enableCategorySection: true,
   sliderBanners: [],
@@ -315,7 +315,7 @@ const bannerSlides = settings.sliderBanners || [];
 
   const waNumber =
   settings?.whatsappNumber?.replace(/[^\d]/g, "") ||
-  "919862787368";
+  "";
 
 console.log("WhatsApp Number:", settings?.whatsappNumber);
 

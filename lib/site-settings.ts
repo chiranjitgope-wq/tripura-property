@@ -7,7 +7,7 @@ export type SiteSettings = {
 
 export const defaultSiteSettings: SiteSettings = {
   siteName: "Tripura Property",
-  whatsappNumber: "919999999999",
+  whatsappNumber: "",
 };
 
 export async function loadSiteSettings(): Promise<SiteSettings> {

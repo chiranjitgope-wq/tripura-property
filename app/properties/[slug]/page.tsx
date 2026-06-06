@@ -44,7 +44,7 @@ export default function PropertyDetailPage() {
   const slug = Array.isArray(slugValue) ? slugValue[0] : slugValue;
 
   const [savedProperties, setSavedProperties] = useState<PropertyItem[]>([]);
-  const [whatsappNumber, setWhatsappNumber] = useState("919999999999");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLeadForm, setShowLeadForm] = useState(false);
