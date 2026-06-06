@@ -362,7 +362,7 @@ const bannerSlides = settings.sliderBanners || [];
   <div className="mx-auto max-w-6xl rounded-2xl bg-white p-3 shadow-xl">
 
     <div className="mb-2 text-center">
-  <div className="flex items-center justify-center gap-2">
+  <div className="flex w-full items-center gap-2">
     <img
       src="/logo.png"
       alt="Tripura Property"
@@ -378,20 +378,20 @@ const bannerSlides = settings.sliderBanners || [];
   </p>
 </div>
 
-    <div className="grid grid-cols-[1.6fr_1fr_auto] gap-2">
+    <div className="flex w-full items-center gap-2">
 
       <input
         type="text"
         placeholder="Search property..."
         value={searchText}
         onChange={(e) => setSearchText(e.target.value)}
-        className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none"
+        className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-sm outline-none"
       />
 
       <select
         value={location}
         onChange={(e) => setLocation(e.target.value)}
-        className="h-11 rounded-xl border border-slate-200 px-2 text-sm outline-none"
+        className="h-11 w-20 shrink-0 rounded-xl border border-slate-200 px-2 text-sm outline-none"
       >
         <option value="">Area</option>
         <option value="Agartala">Agartala</option>
