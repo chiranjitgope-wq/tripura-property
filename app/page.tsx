@@ -313,7 +313,11 @@ const bannerSlides = settings.sliderBanners || [];
     { title: "Rent", icon: KeyIcon, href: "/properties?type=rent" },
   ];
 
-  const waNumber = (settings.whatsappNumber || "919999999999").replace(/[^\d]/g, "");
+  const waNumber =
+  settings?.whatsappNumber?.replace(/[^\d]/g, "") ||
+  "919862787368";
+
+console.log("WhatsApp Number:", settings?.whatsappNumber);
 
   function toggleSaved(id: string) {
     setFavoriteIds((prev) => {
