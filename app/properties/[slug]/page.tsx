@@ -51,7 +51,7 @@ export default function PropertyDetailPage() {
   const [selectedProperty, setSelectedProperty] = useState<PropertyItem | null>(
     null
   );
-
+const [previewImage, setPreviewImage] = useState("");
   const [leadForm, setLeadForm] = useState<LeadForm>({
     fullName: "",
     phone: "",
@@ -320,15 +320,16 @@ ${leadForm.message || "Please share more details."}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {(property.images || []).map((img, index) => (
-                <img
-                  key={index}
-                  src={img}
-                  alt={`${property.title} ${index + 1}`}
-                  className="h-28 w-full rounded-2xl object-cover bg-white shadow"
-                />
-              ))}
-            </div>
+  {(property.images || []).map((img, index) => (
+    <img
+      key={index}
+      src={img}
+      alt={`${property.title} ${index + 1}`}
+      onClick={() => setPreviewImage(img)}
+      className="h-28 w-full cursor-pointer rounded-2xl object-cover bg-white shadow transition hover:scale-105"
+    />
+  ))}
+</div>
           </div>
 
           <div className="rounded-3xl bg-white p-6 shadow">
@@ -652,6 +653,26 @@ ${leadForm.message || "Please share more details."}
           </div>
         </div>
       )}
+      {previewImage && (
+  <div
+    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90"
+    onClick={() => setPreviewImage("")}
+  >
+    <button
+      type="button"
+      onClick={() => setPreviewImage("")}
+      className="absolute right-5 top-5 rounded-full bg-white px-4 py-2 text-xl font-bold text-black"
+    >
+      ✕
+    </button>
+
+    <img
+      src={previewImage}
+      alt="Preview"
+      className="max-h-[95vh] max-w-[95vw] rounded-xl object-contain"
+    />
+  </div>
+)}
     </main>
   );
 }
