@@ -162,23 +162,13 @@ function WhatsAppIcon({ className = "" }: { className?: string }) {
 }
 
 function normalizeSettings(parsed: any): AdminSettings {
-  const banners = Array.isArray(parsed?.sliderBanners) ? parsed.sliderBanners : [];
-
   return {
     ...defaultSettings,
     ...parsed,
-    sliderBanners: Array.from({ length: 5 }, (_, i) => {
-      const b = banners[i];
-      const fallback = defaultSettings.sliderBanners[i];
-
-      return {
-        image: b?.image || fallback.image,
-        title: b?.title || fallback.title,
-        subtitle: b?.subtitle || fallback.subtitle,
-        link: b?.link || fallback.link,
-        category: (b?.category || fallback.category) as CategoryType,
-      };
-    }),
+    whatsappNumber: parsed?.whatsappNumber || "",
+    sliderBanners: Array.isArray(parsed?.sliderBanners)
+      ? parsed.sliderBanners
+      : [],
   };
 }
 
@@ -228,8 +218,11 @@ const [location, setLocation] = useState("");
         .single();
 
       if (!error && data?.data) {
-        setSettings(normalizeSettings(data.data));
-      }
+  console.log("DATA FROM SUPABASE:", data.data);
+  setSettings(data.data as AdminSettings);
+}
+        
+      
     } catch (error) {
       console.error("Failed to load settings:", error);
     }
