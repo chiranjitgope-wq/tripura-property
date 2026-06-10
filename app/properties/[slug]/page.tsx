@@ -379,7 +379,18 @@ ${leadForm.message || "Please share more details."}
             </div>
 
             <p className="mt-5 text-gray-700">{property.description}</p>
-
+{property.youtubeUrl && (
+  <div className="mt-6">
+    <a
+      href={property.youtubeUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-3 font-semibold text-white shadow-lg hover:bg-red-700"
+    >
+      ▶ Watch Full Property Video on YouTube
+    </a>
+  </div>
+)}
             <div className="mt-6 space-y-2 text-sm text-gray-600">
               <p>
                 <strong>Area:</strong> {property.area}
