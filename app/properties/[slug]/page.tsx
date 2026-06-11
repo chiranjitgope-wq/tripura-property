@@ -83,11 +83,23 @@ const [previewImage, setPreviewImage] = useState("");
           .order("created_at", { ascending: false });
 
         if (error) {
-          console.error("Failed to load properties:", error);
-          setSavedProperties([]);
-        } else {
-          setSavedProperties(Array.isArray(data) ? (data as PropertyItem[]) : []);
-        }
+  console.error("Failed to load properties:", error);
+  setSavedProperties([]);
+} else {
+  const mapped = Array.isArray(data)
+    ? data.map((item: any) => ({
+        ...item,
+        youtubeUrl: item.youtubeUrl || item.youtube_url,
+      }))
+    : [];
+
+  setSavedProperties(mapped as PropertyItem[]);
+}
+        
+        
+      
+        
+      
       } catch (error) {
         console.error("Failed to load saved properties:", error);
       } finally {
