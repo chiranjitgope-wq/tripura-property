@@ -294,7 +294,7 @@ const bannerSlides = settings.sliderBanners || [];
 
     const interval = window.setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
-    }, 4000);
+    }, 10000);
 
     return () => window.clearInterval(interval);
   }, [bannerSlides.length]);
