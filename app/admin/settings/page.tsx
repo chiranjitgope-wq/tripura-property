@@ -60,15 +60,6 @@ const defaultSettings: AdminSettings = {
   sliderBanners: Array.from({ length: BANNER_COUNT }, (_, i) => emptyBanner(i)),
 };
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Failed to read image"));
-    reader.readAsDataURL(file);
-  });
-}
-
 function normalizeLoadedSettings(parsed: any): AdminSettings {
   const oldSlides: string[] = Array.isArray(parsed?.sliderImages)
     ? parsed.sliderImages
@@ -105,6 +96,8 @@ function normalizeLoadedSettings(parsed: any): AdminSettings {
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<AdminSettings>(defaultSettings);
   const [savedMessage, setSavedMessage] = useState("");
+  // Her banner ka alag loading state track karne ke liye
+  const [uploadingIndexes, setUploadingIndexes] = useState<{ [key: number]: boolean }>({});
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -144,6 +137,7 @@ export default function AdminSettingsPage() {
     });
   };
 
+  // Naya Optimize handled function jo image direct Supabase Storage me fekta hai
   const handleBannerUpload =
     (index: number) => async (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -155,22 +149,42 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      const dataUrl = await readFileAsDataUrl(file);
+      try {
+        // Loader on karein
+        setUploadingIndexes((prev) => ({ ...prev, [index]: true }));
+        setSavedMessage(`Uploading Slide ${index + 1}...`);
 
-      setSettings((prev) => {
-        const next = [...prev.sliderBanners];
-        next[index] = {
-          ...next[index],
-          image: dataUrl,
-        };
-        return {
-          ...prev,
-          sliderBanners: next,
-        };
-      });
+        // Unique filename banayein cache issue se bachne ke liye
+        const fileExt = file.name.split(".").pop();
+        const fileName = `banners/slide_${index}_${Date.now()}.${fileExt}`;
 
-      setSavedMessage("");
-      e.target.value = "";
+        // Direct Supabase 'properties' bucket me upload karein
+        const { error: uploadError } = await supabase.storage
+          .from("properties")
+          .upload(fileName, file, {
+            cacheControl: "3600",
+            upsert: true,
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Image ka public URL nikalein
+        const { data: { publicUrl } } = supabase.storage
+          .from("properties")
+          .getPublicUrl(fileName);
+
+        // State me Base64 ki jagah sirf URL link store karein
+        updateBannerField(index, "image", publicUrl);
+        setSavedMessage(`Slide ${index + 1} Image updated background successfully!`);
+      } catch (error: any) {
+        console.error("Upload error:", error);
+        setSavedMessage(`Upload failed: ${error.message || error}`);
+      } finally {
+        // Loader off karein
+        setUploadingIndexes((prev) => ({ ...prev, [index]: false }));
+        e.target.value = "";
+        setTimeout(() => setSavedMessage(""), 3000);
+      }
     };
 
   const removeBannerImage = (index: number) => {
@@ -188,27 +202,27 @@ export default function AdminSettingsPage() {
   };
 
   const handleSave = async () => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 
-    const { error } = await supabase
-      .from("settings")
-      .upsert({
-        id: 1,
-        data: settings,
-        updated_at: new Date().toISOString(),
-      });
+      const { error } = await supabase
+        .from("settings")
+        .upsert({
+          id: 1,
+          data: settings,
+          updated_at: new Date().toISOString(),
+        });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    setSavedMessage("Settings saved successfully.");
-  } catch (error) {
-    console.error(error);
-    setSavedMessage("Failed to save settings.");
-  }
+      setSavedMessage("Settings saved successfully.");
+    } catch (error) {
+      console.error(error);
+      setSavedMessage("Failed to save settings.");
+    }
 
-  setTimeout(() => setSavedMessage(""), 2500);
-};
+    setTimeout(() => setSavedMessage(""), 2500);
+  };
 
   const handleReset = () => {
     setSettings(defaultSettings);
@@ -225,6 +239,7 @@ export default function AdminSettingsPage() {
       </p>
 
       <div className="mt-6 space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
+        {/* Basic Settings */}
         <section>
           <h2 className="text-xl font-semibold">Basic Settings</h2>
 
@@ -311,6 +326,7 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
+        {/* Property Plan Settings */}
         <section>
           <h2 className="text-xl font-semibold">Property Plan Settings</h2>
 
@@ -361,6 +377,7 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
+        {/* Homepage Controls */}
         <section>
           <h2 className="text-xl font-semibold">Homepage Controls</h2>
 
@@ -389,6 +406,7 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
+        {/* Homepage Slider Ads */}
         <section>
           <h2 className="text-xl font-semibold">Homepage Slider Ads</h2>
           <p className="mt-2 text-sm text-gray-500">
@@ -406,6 +424,7 @@ export default function AdminSettingsPage() {
                   accept="image/*"
                   className="hidden"
                   onChange={handleBannerUpload(index)}
+                  disabled={uploadingIndexes[index]}
                 />
 
                 <div className="mb-3 flex items-center justify-between">
@@ -503,15 +522,17 @@ export default function AdminSettingsPage() {
                     <button
                       type="button"
                       onClick={() => fileInputRefs.current[index]?.click()}
-                      className="flex-1 rounded-xl border px-3 py-2 text-sm"
+                      className="flex-1 rounded-xl border px-3 py-2 text-sm disabled:opacity-50"
+                      disabled={uploadingIndexes[index]}
                     >
-                      {banner.image ? "Change" : "Upload"}
+                      {uploadingIndexes[index] ? "Uploading..." : banner.image ? "Change" : "Upload"}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => removeBannerImage(index)}
                       className="flex-1 rounded-xl border border-red-300 px-3 py-2 text-sm text-red-600"
+                      disabled={uploadingIndexes[index]}
                     >
                       Remove
                     </button>
