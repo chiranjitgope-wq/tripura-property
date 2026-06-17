@@ -96,20 +96,37 @@ function normalizeLoadedSettings(parsed: any): AdminSettings {
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<AdminSettings>(defaultSettings);
   const [savedMessage, setSavedMessage] = useState("");
-  // Her banner ka alag loading state track karne ke liye
   const [uploadingIndexes, setUploadingIndexes] = useState<{ [key: number]: boolean }>({});
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // LIVE DATABASE FETCHING ON LOAD
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
+    async function loadLiveSettings() {
+      try {
+        // First try to load from Supabase directly
+        const { data, error } = await supabase
+          .from("settings")
+          .select("data")
+          .eq("id", 1)
+          .single();
 
-      const parsed = JSON.parse(raw);
-      setSettings(normalizeLoadedSettings(parsed));
-    } catch (error) {
-      console.error("Failed to load settings:", error);
+        if (data?.data) {
+          setSettings(normalizeLoadedSettings(data.data));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data.data));
+          return;
+        }
+
+        // Fallback to localStorage if database row is missing or empty
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          setSettings(normalizeLoadedSettings(parsed));
+        }
+      } catch (error) {
+        console.error("Failed to load live settings:", error);
+      }
     }
+    loadLiveSettings();
   }, []);
 
   const updateField = <K extends keyof AdminSettings>(key: K, value: AdminSettings[K]) => {
@@ -137,7 +154,6 @@ export default function AdminSettingsPage() {
     });
   };
 
-  // Naya Optimize handled function jo image direct Supabase Storage me fekta hai
   const handleBannerUpload =
     (index: number) => async (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -150,15 +166,12 @@ export default function AdminSettingsPage() {
       }
 
       try {
-        // Loader on karein
         setUploadingIndexes((prev) => ({ ...prev, [index]: true }));
         setSavedMessage(`Uploading Slide ${index + 1}...`);
 
-        // Unique filename banayein cache issue se bachne ke liye
         const fileExt = file.name.split(".").pop();
         const fileName = `banners/slide_${index}_${Date.now()}.${fileExt}`;
 
-        // Direct Supabase 'properties' bucket me upload karein
         const { error: uploadError } = await supabase.storage
           .from("properties")
           .upload(fileName, file, {
@@ -168,22 +181,19 @@ export default function AdminSettingsPage() {
 
         if (uploadError) throw uploadError;
 
-        // Image ka public URL nikalein
         const { data: { publicUrl } } = supabase.storage
           .from("properties")
           .getPublicUrl(fileName);
 
-        // State me Base64 ki jagah sirf URL link store karein
         updateBannerField(index, "image", publicUrl);
-        setSavedMessage(`Slide ${index + 1} Image updated background successfully!`);
+        setSavedMessage(`Slide ${index + 1} Image updated successfully! Please click Save Settings to publish.`);
       } catch (error: any) {
         console.error("Upload error:", error);
         setSavedMessage(`Upload failed: ${error.message || error}`);
       } finally {
-        // Loader off karein
         setUploadingIndexes((prev) => ({ ...prev, [index]: false }));
         e.target.value = "";
-        setTimeout(() => setSavedMessage(""), 3000);
+        setTimeout(() => setSavedMessage(""), 4000);
       }
     };
 
@@ -201,34 +211,65 @@ export default function AdminSettingsPage() {
     });
   };
 
+  // SAFE ATOMIC MERGE SAVE METHOD
   const handleSave = async () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      setSavedMessage("Saving settings safely...");
+      
+      // 1. Fetch deep fresh state straight from DB to ensure no banner gets overwritten
+      const { data: currentDB } = await supabase
+        .from("settings")
+        .select("data")
+        .eq("id", 1)
+        .single();
+
+      const existingDBData = currentDB?.data || {};
+
+      // 2. Merge user edits accurately with what already exists on backend bucket
+      const mergedData = {
+        ...existingDBData,
+        ...settings,
+        sliderBanners: settings.sliderBanners.map((banner, idx) => {
+          // If state is empty strings, check if DB holds reference to avoid wipe
+          const dbBanner = existingDBData?.sliderBanners?.[idx];
+          return {
+            ...banner,
+            image: banner.image || dbBanner?.image || "",
+          };
+        }),
+      };
+
+      // 3. Save clean snapshot back into local space and Supabase
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
 
       const { error } = await supabase
         .from("settings")
         .upsert({
           id: 1,
-          data: settings,
+          data: mergedData,
           updated_at: new Date().toISOString(),
         });
 
       if (error) throw error;
 
-      setSavedMessage("Settings saved successfully.");
+      // sync state back to UI view safety boundary
+      setSettings(mergedData);
+      setSavedMessage("Settings saved successfully! Everything is safe in Database. 🎉");
     } catch (error) {
       console.error(error);
-      setSavedMessage("Failed to save settings.");
+      setSavedMessage("Failed to safely sync updates with backend.");
     }
 
-    setTimeout(() => setSavedMessage(""), 2500);
+    setTimeout(() => setSavedMessage(""), 3000);
   };
 
   const handleReset = () => {
-    setSettings(defaultSettings);
-    localStorage.removeItem(STORAGE_KEY);
-    setSavedMessage("Settings reset.");
-    setTimeout(() => setSavedMessage(""), 2500);
+    if (confirm("Are you sure you want to revert input state back to default?")) {
+      setSettings(defaultSettings);
+      localStorage.removeItem(STORAGE_KEY);
+      setSavedMessage("Form configuration locally reset.");
+      setTimeout(() => setSavedMessage(""), 2500);
+    }
   };
 
   return (
@@ -382,7 +423,7 @@ export default function AdminSettingsPage() {
           <h2 className="text-xl font-semibold">Homepage Controls</h2>
 
           <div className="mt-4 flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 rounded-xl border px-4 py-3">
+            <label className="flex items-center gap-2 rounded-xl border px-4 py-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={settings.enableFeaturedSection}
@@ -393,7 +434,7 @@ export default function AdminSettingsPage() {
               Show Featured Section
             </label>
 
-            <label className="flex items-center gap-2 rounded-xl border px-4 py-3">
+            <label className="flex items-center gap-2 rounded-xl border px-4 py-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={settings.enableCategorySection}
@@ -444,7 +485,7 @@ export default function AdminSettingsPage() {
                   <img
                     src={banner.image}
                     alt={`Banner ${index + 1}`}
-                    className="h-32 w-full rounded-xl object-cover"
+                    className="h-32 w-full rounded-xl object-cover shadow-inner bg-white"
                   />
                 ) : (
                   <div className="flex h-32 items-center justify-center rounded-xl border border-dashed bg-white text-sm text-gray-400">
@@ -522,7 +563,7 @@ export default function AdminSettingsPage() {
                     <button
                       type="button"
                       onClick={() => fileInputRefs.current[index]?.click()}
-                      className="flex-1 rounded-xl border px-3 py-2 text-sm disabled:opacity-50"
+                      className="flex-1 rounded-xl border bg-white px-3 py-2 text-sm shadow-sm font-medium disabled:opacity-50"
                       disabled={uploadingIndexes[index]}
                     >
                       {uploadingIndexes[index] ? "Uploading..." : banner.image ? "Change" : "Upload"}
@@ -531,7 +572,7 @@ export default function AdminSettingsPage() {
                     <button
                       type="button"
                       onClick={() => removeBannerImage(index)}
-                      className="flex-1 rounded-xl border border-red-300 px-3 py-2 text-sm text-red-600"
+                      className="flex-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100 transition"
                       disabled={uploadingIndexes[index]}
                     >
                       Remove
@@ -544,16 +585,16 @@ export default function AdminSettingsPage() {
         </section>
 
         {savedMessage && (
-          <div className="rounded-xl bg-gray-100 px-4 py-3 text-sm text-gray-700">
+          <div className="rounded-xl bg-slate-900 px-4 py-3 text-sm text-white font-medium shadow-md">
             {savedMessage}
           </div>
         )}
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 pt-4 border-t">
           <button
             type="button"
             onClick={handleSave}
-            className="rounded-xl bg-black px-6 py-3 text-white"
+            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-6 py-3 font-semibold text-white shadow-md transition"
           >
             Save Settings
           </button>
@@ -561,9 +602,9 @@ export default function AdminSettingsPage() {
           <button
             type="button"
             onClick={handleReset}
-            className="rounded-xl border border-red-300 px-6 py-3 text-red-600"
+            className="rounded-xl border border-red-300 bg-white px-6 py-3 font-semibold text-red-600 hover:bg-red-50 transition"
           >
-            Reset Settings
+            Reset Form
           </button>
         </div>
       </div>
